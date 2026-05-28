@@ -60,7 +60,7 @@ function normalizeOutput(raw: unknown): RunOutput {
 }
 
 function buildProviderInput(request: CreateRunRequest) {
-  const model = getModel(request.modelId);
+  const model = resolveExecutionModel(getModel(request.modelId));
   const input: Record<string, unknown> = {};
   for (const [sourceKey, targetKey] of Object.entries(model.providerInputMap)) {
     const value = request.inputs[sourceKey];
@@ -68,6 +68,13 @@ function buildProviderInput(request: CreateRunRequest) {
   }
   if (!input.prompt && request.inputs.prompt) input.prompt = request.inputs.prompt;
   return input;
+}
+
+function resolveExecutionModel(model: ReturnType<typeof getModel>) {
+  if (model.id === "auto-random" || model.id === "smart-mix") {
+    return getModel("grok-imagine");
+  }
+  return model;
 }
 
 async function maybeUpscale(output: RunOutput, request: CreateRunRequest, run: RunRecord): Promise<RunOutput> {
@@ -94,6 +101,7 @@ async function maybeUpscale(output: RunOutput, request: CreateRunRequest, run: R
 
 export async function executeRun(request: CreateRunRequest): Promise<RunRecord> {
   const model = getModel(request.modelId);
+  const executionModel = resolveExecutionModel(model);
   const inputErrors = validateRequiredInputs(model, request.inputs);
   if (inputErrors.length) {
     throw new Error(inputErrors.join("; "));
@@ -119,13 +127,23 @@ export async function executeRun(request: CreateRunRequest): Promise<RunRecord> 
   await saveRun(run);
 
   try {
-    run.events.push(event(config.providerMode === "mock" ? "Running in cost-free mock mode" : `Calling ${model.provider}:${model.endpoint}`));
+    if (executionModel.id !== model.id) {
+      run.events.push(event(`Resolved ${model.label} to ${executionModel.label}`));
+      await saveRun(run);
+    }
+    run.events.push(
+      event(
+        config.providerMode === "mock"
+          ? "Running in cost-free mock mode"
+          : `Calling ${executionModel.provider}:${executionModel.endpoint}`
+      )
+    );
     await saveRun(run);
 
     const output =
-      config.providerMode === "mock" || model.provider === "mock"
+      config.providerMode === "mock" || executionModel.provider === "mock"
         ? await runMockModel(model, request)
-        : normalizeOutput((await callFalQueue(model.endpoint, buildProviderInput(request))).data);
+        : normalizeOutput((await callFalQueue(executionModel.endpoint, buildProviderInput(request))).data);
 
     run.output = await maybeUpscale(output, request, run);
     run.status = "succeeded";

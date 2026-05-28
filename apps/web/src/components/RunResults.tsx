@@ -1,21 +1,26 @@
 import type { RunRecord } from "@ray-catalyst/core";
 
 export function RunResults({ runs }: { runs: RunRecord[] }) {
-  if (!runs.length) {
-    return (
-      <section className="results empty">
-        <h2>Runs</h2>
-        <p>Create a request above. Mock mode returns local generated placeholders without spending money.</p>
-      </section>
-    );
-  }
-
   return (
     <section className="results">
       <div className="results-head">
-        <h2>Runs</h2>
+        <div className="gallery-bar-left">
+          <h2>Gallery</h2>
+          <div className="gallery-filters">
+            <button className="filter-chip active" type="button">All</button>
+            <button className="filter-chip" type="button">Liked</button>
+            <button className="filter-chip" type="button">Recent</button>
+          </div>
+        </div>
         <span>{runs.length} saved locally</span>
       </div>
+      {!runs.length ? (
+        <div className="empty-state">
+          <div className="empty-mark">✦</div>
+          <div className="empty-title">No mockups yet</div>
+          <div className="empty-sub">Write a brief above and hit Generate. Results will land here.</div>
+        </div>
+      ) : null}
       <div className="masonry">
         {runs.map((run) => (
           <article className="run-card" key={run.id}>
@@ -41,8 +46,8 @@ export function RunResults({ runs }: { runs: RunRecord[] }) {
             ) : null}
             {run.error ? <p className="error-line">{run.error}</p> : null}
             <div className="event-list">
-              {run.events.slice(-3).map((item) => (
-                <span key={`${run.id}-${item.at}`}>{item.message}</span>
+              {run.events.slice(-3).map((item, index) => (
+                <span key={`${run.id}-${item.at}-${index}`}>{item.message}</span>
               ))}
             </div>
           </article>

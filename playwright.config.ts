@@ -10,7 +10,7 @@ export default defineConfig({
   webServer: {
     command: "CATALYST_PROVIDER_MODE=mock CATALYST_API_PORT=5191 CATALYST_WEB_PORT=5190 npm run dev",
     url: "http://127.0.0.1:5190",
-    reuseExistingServer: false,
+    reuseExistingServer: true,
     timeout: 120_000
   },
   projects: [

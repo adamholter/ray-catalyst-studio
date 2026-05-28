@@ -107,7 +107,7 @@ export const TASKS: TaskSpec[] = [
     id: "mockup",
     label: "Interface mockup",
     description: "Generate web, app, and product-interface mockup imagery.",
-    defaultModelId: "grok-imagine"
+    defaultModelId: "gpt-image-2"
   },
   {
     id: "logo",
@@ -131,76 +131,8 @@ export const TASKS: TaskSpec[] = [
 
 export const MODEL_REGISTRY: ModelSpec[] = [
   {
-    id: "grok-imagine",
-    label: "Grok Imagine",
-    taskIds: ["mockup", "logo", "asset"],
-    provider: "fal",
-    endpoint: "xai/grok-imagine-image",
-    costTier: "cheap",
-    speed: "fast",
-    inputFields: [basePromptField, aspectField, countField],
-    providerInputMap: {
-      prompt: "prompt",
-      aspectRatio: "aspect_ratio"
-    },
-    output: {
-      kind: "images",
-      path: "images[]",
-      shape: {
-        "images[].url": "string",
-        "images[].width": "number?",
-        "images[].height": "number?"
-      }
-    },
-    synthId: {
-      status: "none",
-      note: "No SynthID policy is declared for this model in the registry.",
-      applyUpscaleByDefault: false
-    },
-    defaultPostprocessors: [],
-    ui: {
-      shortName: "Grok",
-      accent: "#111318",
-      recommendedFor: ["Fast mockup ideation", "Low-cost live smoke tests"]
-    }
-  },
-  {
-    id: "nano-banana-2",
-    label: "Nano Banana 2",
-    taskIds: ["mockup", "logo", "asset"],
-    provider: "fal",
-    endpoint: "fal-ai/nano-banana-2",
-    costTier: "standard",
-    speed: "medium",
-    inputFields: [basePromptField, aspectField, countField],
-    providerInputMap: {
-      prompt: "prompt",
-      aspectRatio: "aspect_ratio"
-    },
-    output: {
-      kind: "images",
-      path: "images[]",
-      shape: {
-        "images[].url": "string",
-        "images[].width": "number?",
-        "images[].height": "number?"
-      }
-    },
-    synthId: {
-      status: "expected",
-      note: "Google AI-generated imagery can carry SynthID; keep this model on the watermark-safe postprocess path.",
-      applyUpscaleByDefault: true
-    },
-    defaultPostprocessors: ["aura-sr"],
-    ui: {
-      shortName: "Nano",
-      accent: "#476A42",
-      recommendedFor: ["Typography-sensitive edits", "High-fidelity Google-family image tasks"]
-    }
-  },
-  {
     id: "gpt-image-2",
-    label: "GPT Image 2 via FAL",
+    label: "GPT-Image-2",
     taskIds: ["mockup", "logo", "asset"],
     provider: "fal",
     endpoint: "openai/gpt-image-2",
@@ -243,9 +175,281 @@ export const MODEL_REGISTRY: ModelSpec[] = [
     },
     defaultPostprocessors: [],
     ui: {
-      shortName: "GPT Img",
+      shortName: "GPT-Image-2",
       accent: "#355C7D",
       recommendedFor: ["High-quality concept renders when speed/cost are acceptable"]
+    }
+  },
+  {
+    id: "nano-banana-2",
+    label: "Nano Banana 2",
+    taskIds: ["mockup", "logo", "asset"],
+    provider: "fal",
+    endpoint: "fal-ai/nano-banana-2",
+    costTier: "standard",
+    speed: "medium",
+    inputFields: [basePromptField, aspectField, countField],
+    providerInputMap: {
+      prompt: "prompt",
+      aspectRatio: "aspect_ratio"
+    },
+    output: {
+      kind: "images",
+      path: "images[]",
+      shape: {
+        "images[].url": "string",
+        "images[].width": "number?",
+        "images[].height": "number?"
+      }
+    },
+    synthId: {
+      status: "expected",
+      note: "Google AI-generated imagery can carry SynthID; keep this model on the watermark-safe postprocess path.",
+      applyUpscaleByDefault: true
+    },
+    defaultPostprocessors: ["aura-sr"],
+    ui: {
+      shortName: "Nano Banana 2",
+      accent: "#476A42",
+      recommendedFor: ["Typography-sensitive edits", "High-fidelity Google-family image tasks"]
+    }
+  },
+  {
+    id: "seedream-5-lite",
+    label: "Seedream 5 Lite",
+    taskIds: ["mockup", "logo", "asset"],
+    provider: "fal",
+    endpoint: "fal-ai/bytedance/seedream/v5/lite/text-to-image",
+    costTier: "cheap",
+    speed: "fast",
+    inputFields: [basePromptField, aspectField, countField],
+    providerInputMap: {
+      prompt: "prompt",
+      aspectRatio: "aspect_ratio"
+    },
+    output: {
+      kind: "images",
+      path: "images[]",
+      shape: {
+        "images[].url": "string",
+        "images[].width": "number?",
+        "images[].height": "number?"
+      }
+    },
+    synthId: {
+      status: "none",
+      note: "No SynthID policy is declared for this model in the registry.",
+      applyUpscaleByDefault: false
+    },
+    defaultPostprocessors: [],
+    ui: {
+      shortName: "Seedream 5 Lite",
+      accent: "#6C5B7B",
+      recommendedFor: ["Fast creative experiments", "Artistic stylization"]
+    }
+  },
+  {
+    id: "grok-imagine",
+    label: "Grok Imagine",
+    taskIds: ["mockup", "logo", "asset"],
+    provider: "fal",
+    endpoint: "xai/grok-imagine-image",
+    costTier: "cheap",
+    speed: "fast",
+    inputFields: [basePromptField, aspectField, countField],
+    providerInputMap: {
+      prompt: "prompt",
+      aspectRatio: "aspect_ratio"
+    },
+    output: {
+      kind: "images",
+      path: "images[]",
+      shape: {
+        "images[].url": "string",
+        "images[].width": "number?",
+        "images[].height": "number?"
+      }
+    },
+    synthId: {
+      status: "none",
+      note: "No SynthID policy is declared for this model in the registry.",
+      applyUpscaleByDefault: false
+    },
+    defaultPostprocessors: [],
+    ui: {
+      shortName: "Grok Imagine",
+      accent: "#111318",
+      recommendedFor: ["Fast mockup ideation", "Low-cost live smoke tests"]
+    }
+  },
+  {
+    id: "recraft-v4",
+    label: "Recraft V4",
+    taskIds: ["mockup", "logo", "asset"],
+    provider: "fal",
+    endpoint: "fal-ai/recraft/v4/text-to-image",
+    costTier: "standard",
+    speed: "medium",
+    inputFields: [basePromptField, aspectField, countField],
+    providerInputMap: {
+      prompt: "prompt",
+      aspectRatio: "aspect_ratio"
+    },
+    output: {
+      kind: "images",
+      path: "images[]",
+      shape: {
+        "images[].url": "string",
+        "images[].width": "number?",
+        "images[].height": "number?"
+      }
+    },
+    synthId: {
+      status: "none",
+      note: "No SynthID policy is declared for this model in the registry.",
+      applyUpscaleByDefault: false
+    },
+    defaultPostprocessors: [],
+    ui: {
+      shortName: "Recraft V4",
+      accent: "#C06C84",
+      recommendedFor: ["Vector assets", "Sleek branding/mockups"]
+    }
+  },
+  {
+    id: "recraft-v4-pro",
+    label: "Recraft V4 Pro",
+    taskIds: ["mockup", "logo", "asset"],
+    provider: "fal",
+    endpoint: "fal-ai/recraft/v4/pro/text-to-image",
+    costTier: "expensive",
+    speed: "slow",
+    inputFields: [basePromptField, aspectField, countField],
+    providerInputMap: {
+      prompt: "prompt",
+      aspectRatio: "aspect_ratio"
+    },
+    output: {
+      kind: "images",
+      path: "images[]",
+      shape: {
+        "images[].url": "string",
+        "images[].width": "number?",
+        "images[].height": "number?"
+      }
+    },
+    synthId: {
+      status: "none",
+      note: "No SynthID policy is declared for this model in the registry.",
+      applyUpscaleByDefault: false
+    },
+    defaultPostprocessors: [],
+    ui: {
+      shortName: "Recraft V4 Pro",
+      accent: "#F67280",
+      recommendedFor: ["Professional designs", "Maximum detail & branding precision"]
+    }
+  },
+  {
+    id: "ideogram-v3",
+    label: "Ideogram V3",
+    taskIds: ["mockup", "logo", "asset"],
+    provider: "fal",
+    endpoint: "fal-ai/ideogram/v3",
+    costTier: "standard",
+    speed: "medium",
+    inputFields: [basePromptField, aspectField, countField],
+    providerInputMap: {
+      prompt: "prompt",
+      aspectRatio: "aspect_ratio"
+    },
+    output: {
+      kind: "images",
+      path: "images[]",
+      shape: {
+        "images[].url": "string",
+        "images[].width": "number?",
+        "images[].height": "number?"
+      }
+    },
+    synthId: {
+      status: "none",
+      note: "No SynthID policy is declared for this model in the registry.",
+      applyUpscaleByDefault: false
+    },
+    defaultPostprocessors: [],
+    ui: {
+      shortName: "Ideogram V3",
+      accent: "#F8B195",
+      recommendedFor: ["Typography and text rendering", "Clean graphic layouts"]
+    }
+  },
+  {
+    id: "auto-random",
+    label: "Auto",
+    taskIds: ["mockup", "logo", "asset"],
+    provider: "internal",
+    endpoint: "internal/auto-random",
+    costTier: "standard",
+    speed: "fast",
+    inputFields: [basePromptField, aspectField, countField],
+    providerInputMap: {
+      prompt: "prompt",
+      aspectRatio: "aspect_ratio"
+    },
+    output: {
+      kind: "images",
+      path: "images[]",
+      shape: {
+        "images[].url": "string",
+        "images[].width": "number?",
+        "images[].height": "number?"
+      }
+    },
+    synthId: {
+      status: "none",
+      note: "No SynthID policy is declared for this model in the registry.",
+      applyUpscaleByDefault: false
+    },
+    defaultPostprocessors: [],
+    ui: {
+      shortName: "Auto",
+      accent: "#A7226E",
+      recommendedFor: ["Automatic choice based on speed and prompt length"]
+    }
+  },
+  {
+    id: "smart-mix",
+    label: "Smart Mix",
+    taskIds: ["mockup", "logo", "asset"],
+    provider: "internal",
+    endpoint: "internal/smart-mix",
+    costTier: "standard",
+    speed: "medium",
+    inputFields: [basePromptField, aspectField, countField],
+    providerInputMap: {
+      prompt: "prompt",
+      aspectRatio: "aspect_ratio"
+    },
+    output: {
+      kind: "images",
+      path: "images[]",
+      shape: {
+        "images[].url": "string",
+        "images[].width": "number?",
+        "images[].height": "number?"
+      }
+    },
+    synthId: {
+      status: "none",
+      note: "No SynthID policy is declared for this model in the registry.",
+      applyUpscaleByDefault: false
+    },
+    defaultPostprocessors: [],
+    ui: {
+      shortName: "Smart Mix",
+      accent: "#EC2049",
+      recommendedFor: ["Blended execution path for complex requirements"]
     }
   },
   {

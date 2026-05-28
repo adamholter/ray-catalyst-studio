@@ -1,21 +1,24 @@
 {
-  "name": "catalyst-studio-web",
+  "name": "@ray-catalyst/web",
   "private": true,
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview"
+    "dev": "vite --host 127.0.0.1 --port ${CATALYST_WEB_PORT:-5190}",
+    "preview": "vite preview --host 127.0.0.1 --port ${CATALYST_WEB_PORT:-5190}",
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "@ray-catalyst/core": "file:../../packages/core",
+    "@vitejs/plugin-react": "^5.1.1",
+    "vite": "^7.3.0",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3"
   },
   "devDependencies": {
-    "@types/react": "^18.3.3",
-    "@types/react-dom": "^18.3.0",
-    "typescript": "^5.2.2",
-    "vite": "^5.2.0"
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "typescript": "^5.9.3"
   }
 }

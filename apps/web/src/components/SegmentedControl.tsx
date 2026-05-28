@@ -1,38 +1,34 @@
-import React from 'react';
-
-interface Option {
-  id: string;
+type Option = {
   label: string;
-}
+  value: string;
+};
 
-interface SegmentedControlProps {
+export function SegmentedControl({
+  label,
+  options,
+  value,
+  onChange
+}: {
+  label: string;
   options: Option[];
   value: string;
   onChange: (value: string) => void;
-}
-
-export const SegmentedControl: React.FC<SegmentedControlProps> = ({
-  options,
-  value,
-  onChange,
-}) => {
+}) {
   return (
-    <div className="segmented-control" role="tablist">
-      {options.map((option) => {
-        const isActive = option.id === value;
-        return (
+    <div className="control-block">
+      <div className="control-label">{label}</div>
+      <div className="segmented" role="group" aria-label={label}>
+        {options.map((option) => (
           <button
-            key={option.id}
+            key={option.value}
             type="button"
-            role="tab"
-            aria-selected={isActive}
-            className={`segment-btn ${isActive ? 'active' : ''}`}
-            onClick={() => onChange(option.id)}
+            className={option.value === value ? "selected" : ""}
+            onClick={() => onChange(option.value)}
           >
             {option.label}
           </button>
-        );
-      })}
+        ))}
+      </div>
     </div>
   );
-};
+}

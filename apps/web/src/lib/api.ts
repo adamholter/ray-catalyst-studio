@@ -32,3 +32,13 @@ export async function createRun(request: CreateRunRequest) {
     })
   );
 }
+
+export async function enhanceRunImage(runId: string, imageUrl: string) {
+  return parseResponse<{ run: RunRecord }>(
+    await fetch(`/api/runs/${runId}/upscale`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ imageUrl, upscalerId: "aura-sr" })
+    })
+  );
+}

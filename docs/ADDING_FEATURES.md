@@ -5,17 +5,17 @@
 1. Add a `ModelSpec` to `MODEL_REGISTRY` in `packages/core/src/registry.ts`.
 2. Describe every input as a `FieldSpec`.
 3. Describe the output shape.
-4. Set SynthID policy and default postprocessors.
+4. Define any optional result actions separately from generation.
 5. Add or adjust tests in `packages/core/src/registry.test.ts`.
 6. If the provider is new, add an adapter in `apps/api/src/providers`.
 7. Verify the frontend renders the model without hard-coded UI changes.
 
-## Add A New Upscaler
+## Add A New Image Enhancer
 
 1. Add an `UpscalerSpec` to `UPSCALER_REGISTRY`.
 2. Keep it interchangeable by id.
 3. Update `apps/api/src/runner.ts` only if the provider call shape requires a new adapter.
-4. Add tests that prove SynthID-prone models route to the right default upscaler.
+4. Keep enhancement in the per-result modal, not the main generation controls.
 
 ## Add Slide Presentations
 

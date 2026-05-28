@@ -12,14 +12,15 @@ Catalyst Studio is intentionally split into three layers.
 - `createRunRequestSchema`: request validation.
 - `RunRecord`: durable run shape returned by the backend.
 
-The registry is how the frontend learns the "ins and outs" of each model: input parameters, output shapes, default postprocessors, cost/speed tier, and SynthID policy.
+The registry is how the frontend learns the "ins and outs" of each model: input parameters, output shapes, available result actions, and cost/speed tier.
 
 ## 2. Backend API
 
 `apps/api` owns all execution:
 
 - `GET /api/capabilities`: returns tasks, models, upscalers, and defaults.
-- `POST /api/runs`: validates a run, calls the selected model, applies postprocessors, and stores the result.
+- `POST /api/runs`: validates a run, calls the selected model, and stores the result.
+- `POST /api/runs/:id/upscale`: applies a result-level enhancement when the user asks for it.
 - `GET /api/runs`: returns local run history.
 - `GET /api/runs/:id`: returns one run.
 
@@ -37,19 +38,13 @@ Provider credentials stay in backend env vars.
 
 The frontend should not know FAL/OpenAI endpoint details.
 
-## SynthID And Upscaling
+## Result Enhancements
 
-Google DeepMind describes SynthID as an imperceptible watermark for AI-generated media. Google Cloud also documents SynthID watermarking for Imagen model versions that support watermarking.
+Enhancement/upscaling is a per-result action, not an automatic generation step and not a main-sidebar control.
 
-Registry policy:
+Policy:
 
-- Models with likely/expected SynthID set `synthId.status`.
-- The default cleanup path is `defaultPostprocessors: ["aura-sr"]`.
-- AuraSR is registered as an interchangeable upscaler, not hard-coded into a model.
-
-Sources:
-
-- Google DeepMind SynthID: https://deepmind.google/science/synthid/
-- Google Cloud watermark verification: https://cloud.google.com/vertex-ai/generative-ai/docs/image/verify-watermark
-- FAL AuraSR endpoint: https://fal.ai/models/fal-ai/aura-sr/api
-- FAL Grok Imagine endpoint: https://fal.ai/grok-imagine
+- Generate first.
+- Let the user open an individual result.
+- Offer enhancement, download, and copy actions inside that result modal.
+- Keep enhancers interchangeable by id in `UPSCALER_REGISTRY`.

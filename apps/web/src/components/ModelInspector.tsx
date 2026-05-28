@@ -31,15 +31,8 @@ export function ModelInspector({
           <dd>{model.output.path}</dd>
         </div>
         <div>
-          <dt>SynthID</dt>
-          <dd>
-            <span className={`status-dot ${model.synthId.status}`}>{model.synthId.status}</span>
-            {model.synthId.note}
-          </dd>
-        </div>
-        <div>
-          <dt>Default upscaler</dt>
-          <dd>{upscaler ? `${upscaler.label}: ${upscaler.note}` : "None"}</dd>
+          <dt>Enhancer</dt>
+          <dd>{upscaler ? `${upscaler.label}: ${upscaler.note}` : "Available from result actions"}</dd>
         </div>
       </dl>
 

@@ -9,10 +9,10 @@ describe("model registry", () => {
     }
   });
 
-  it("keeps SynthID-prone models on an interchangeable upscaler path", () => {
+  it("keeps image enhancement as an explicit per-result action", () => {
     const nano = getModel("nano-banana-2");
-    expect(nano.synthId.status).toBe("expected");
-    expect(shouldApplyDefaultUpscaler(nano)).toBe(true);
+    expect(nano.synthId.applyUpscaleByDefault).toBe(false);
+    expect(shouldApplyDefaultUpscaler(nano)).toBe(false);
     expect(nano.defaultPostprocessors).toContain("aura-sr");
     expect(UPSCALER_REGISTRY.some((upscaler) => upscaler.id === "aura-sr")).toBe(true);
   });

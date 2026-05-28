@@ -78,7 +78,7 @@ const basePromptField: FieldSpec = {
   label: "Prompt",
   kind: "textarea",
   required: true,
-  placeholder: "Describe the result Ray wants to see..."
+  placeholder: "Describe the result you want to see..."
 };
 
 const aspectField: FieldSpec = {
@@ -203,9 +203,9 @@ export const MODEL_REGISTRY: ModelSpec[] = [
       }
     },
     synthId: {
-      status: "expected",
-      note: "Google AI-generated imagery can carry SynthID; keep this model on the watermark-safe postprocess path.",
-      applyUpscaleByDefault: true
+      status: "possible",
+      note: "Optional enhancement can be applied from an individual result.",
+      applyUpscaleByDefault: false
     },
     defaultPostprocessors: ["aura-sr"],
     ui: {
@@ -238,7 +238,7 @@ export const MODEL_REGISTRY: ModelSpec[] = [
     },
     synthId: {
       status: "none",
-      note: "No SynthID policy is declared for this model in the registry.",
+      note: "No special enhancement policy is declared for this model.",
       applyUpscaleByDefault: false
     },
     defaultPostprocessors: [],
@@ -272,7 +272,7 @@ export const MODEL_REGISTRY: ModelSpec[] = [
     },
     synthId: {
       status: "none",
-      note: "No SynthID policy is declared for this model in the registry.",
+      note: "No special enhancement policy is declared for this model.",
       applyUpscaleByDefault: false
     },
     defaultPostprocessors: [],
@@ -306,7 +306,7 @@ export const MODEL_REGISTRY: ModelSpec[] = [
     },
     synthId: {
       status: "none",
-      note: "No SynthID policy is declared for this model in the registry.",
+      note: "No special enhancement policy is declared for this model.",
       applyUpscaleByDefault: false
     },
     defaultPostprocessors: [],
@@ -340,7 +340,7 @@ export const MODEL_REGISTRY: ModelSpec[] = [
     },
     synthId: {
       status: "none",
-      note: "No SynthID policy is declared for this model in the registry.",
+      note: "No special enhancement policy is declared for this model.",
       applyUpscaleByDefault: false
     },
     defaultPostprocessors: [],
@@ -374,7 +374,7 @@ export const MODEL_REGISTRY: ModelSpec[] = [
     },
     synthId: {
       status: "none",
-      note: "No SynthID policy is declared for this model in the registry.",
+      note: "No special enhancement policy is declared for this model.",
       applyUpscaleByDefault: false
     },
     defaultPostprocessors: [],
@@ -408,7 +408,7 @@ export const MODEL_REGISTRY: ModelSpec[] = [
     },
     synthId: {
       status: "none",
-      note: "No SynthID policy is declared for this model in the registry.",
+      note: "No special enhancement policy is declared for this model.",
       applyUpscaleByDefault: false
     },
     defaultPostprocessors: [],
@@ -442,7 +442,7 @@ export const MODEL_REGISTRY: ModelSpec[] = [
     },
     synthId: {
       status: "none",
-      note: "No SynthID policy is declared for this model in the registry.",
+      note: "No special enhancement policy is declared for this model.",
       applyUpscaleByDefault: false
     },
     defaultPostprocessors: [],
@@ -542,8 +542,8 @@ export const UPSCALER_REGISTRY: UpscalerSpec[] = [
       }
     },
     preservesComposition: "high",
-    defaultForSynthId: true,
-    note: "Default watermark-safe postprocessor because it is an upscaler rather than a prompt reinterpretation model."
+    defaultForSynthId: false,
+    note: "High-composition-preservation image enhancement."
   }
 ];
 

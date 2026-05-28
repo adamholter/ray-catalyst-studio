@@ -23,6 +23,27 @@ function modelDetailLabel(model: ModelSpec | undefined, inputs: Record<string, u
   return `${model.label}${suffix}`;
 }
 
+function estimateCost(modelId: string, inputs: Record<string, unknown>) {
+  const count = Number(inputs.count || 1);
+  const prices: Record<string, number> = {
+    "nano-banana-2": 0.08,
+    "seedream-5-lite": 0.035,
+    "grok-imagine": 0.02,
+    "recraft-v4": 0.04,
+    "recraft-v4-pro": 0.25,
+    "ideogram-v3": 0.08
+  };
+
+  if (modelId === "gpt-image-2") {
+    const quality = String(inputs.quality || "low");
+    const qualityPrices: Record<string, number> = { low: 0.07, medium: 0.12, high: 0.17 };
+    return (qualityPrices[quality] || qualityPrices.low) * count;
+  }
+
+  if (modelId === "auto-random" || modelId === "smart-mix") return null;
+  return (prices[modelId] || 0) * count;
+}
+
 export function App() {
   const [capabilities, setCapabilities] = useState<Capabilities | null>(null);
   const [taskId, setTaskId] = useState<TaskId>("mockup");
@@ -47,7 +68,6 @@ export function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const task = useMemo(() => capabilities?.tasks.find((item) => item.id === taskId), [capabilities, taskId]);
   const modelsForTask = useMemo(
     () => capabilities?.models.filter((model) => model.taskIds.includes(taskId)) || [],
     [capabilities, taskId]
@@ -56,21 +76,9 @@ export function App() {
     () => capabilities?.models.find((model) => model.id === modelId),
     [capabilities, modelId]
   );
-  const selectedUpscaler = useMemo(() => {
-    const id = selectedModel?.defaultPostprocessors[0];
-    return capabilities?.upscalers.find((upscaler) => upscaler.id === id);
-  }, [capabilities, selectedModel]);
 
   function setInput(key: string, value: unknown) {
     setInputs((current) => ({ ...current, [key]: value }));
-  }
-
-  function selectTask(nextTask: TaskId) {
-    const defaultModel = capabilities?.defaults[nextTask]?.modelId || "grok-imagine";
-    const model = capabilities?.models.find((item) => item.id === defaultModel);
-    setTaskId(nextTask);
-    setModelId(defaultModel);
-    setInputs(defaultInputsFor(model, { prompt: inputs.prompt || "", count: inputs.count || 1, aspectRatio: inputs.aspectRatio || "2:3" }));
   }
 
   function selectModel(nextModel: string) {
@@ -94,11 +102,7 @@ export function App() {
         taskId,
         modelId,
         inputs,
-        attachments,
-        postprocess: {
-          upscalerId: selectedUpscaler?.id || null,
-          applyUpscale: selectedModel.synthId.applyUpscaleByDefault
-        }
+        attachments
       });
       setRuns((current) => [result.run, ...current.filter((run) => run.id !== result.run.id)]);
     } catch (err) {
@@ -115,6 +119,7 @@ export function App() {
   const count = Number(inputs.count || 1);
   const taskTag = taskId === "mockup" ? "mockups" : taskId === "logo" ? "logos" : taskId === "asset" ? "assets" : "decks";
   const showQuality = selectedModel?.id === "gpt-image-2";
+  const cost = estimateCost(modelId, inputs);
 
   return (
     <>
@@ -147,7 +152,7 @@ export function App() {
                 rows={3}
                 value={String(inputs.prompt || "")}
                 onChange={(event) => setInput("prompt", event.target.value)}
-                placeholder="A museum website for a contemporary art gallery, with an airy editorial feel and a sculptural hero photograph..."
+                placeholder="Describe the website, app screen, logo, or design asset you want..."
               />
 
               <div className="composer-rail">
@@ -193,35 +198,23 @@ export function App() {
                 <button className="ghost-button" type="button" onClick={() => selectModel("auto-random")}>Shuffle model</button>
               </div>
               <div className="action-right">
-                <span className="cost-line"><span>est.</span><strong>$0.00</strong></span>
+                <span className="cost-line"><span>est.</span><strong>{cost === null ? "varies" : `$${cost.toFixed(2)}`}</strong></span>
               </div>
             </div>
 
             <details className="advanced">
               <summary>
                 <span>Advanced controls</span>
-                <span>task, client type, colors, architecture metadata</span>
+                <span>references, aspect, count, style</span>
                 <span>›</span>
               </summary>
-              <div className="advanced-body">
-                <div className="task-row">
-                  {capabilities.tasks.map((item) => (
-                    <button key={item.id} type="button" className={item.id === taskId ? "chip active" : "chip"} onClick={() => selectTask(item.id)}>
-                      {item.label}
-                    </button>
-                  ))}
-                </div>
-                <div className="system-note">
-                  <strong>{task?.description}</strong>
-                  <span>Frontend is rendering this from the backend model registry. Provider calls stay server-side.</span>
-                </div>
-              </div>
+              <div className="advanced-body" />
             </details>
 
             {error ? <div className="error-box">{error}</div> : null}
           </section>
 
-          <RunResults runs={runs} />
+          <RunResults runs={runs} onRunUpdated={(run) => setRuns((current) => [run, ...current.filter((item) => item.id !== run.id)])} />
         </div>
 
         <aside className="sidebar">
@@ -270,22 +263,15 @@ export function App() {
               <div className="sidebar-head"><span className="sidebar-label">Count</span><span className="sidebar-value">{count} {taskTag}</span></div>
               <input className="sidebar-range" type="range" min="1" max="10" value={count} onChange={(event) => setInput("count", Number(event.target.value))} />
             </div>
-
-            <div className="sidebar-section">
-              <label className="toggle-label">
-                <input type="checkbox" checked={Boolean(selectedModel?.synthId.applyUpscaleByDefault)} readOnly />
-                <span>Use SynthID cleanup path when this model needs it</span>
-              </label>
-              <p className="sidebar-note">{selectedUpscaler ? `${selectedUpscaler.label} is configured as the default interchangeable upscaler.` : "No upscaler is applied by default for this model."}</p>
-            </div>
           </div>
         </aside>
+
       </main>
 
       {debugOpen ? (
         <div className="debug-panel">
-          <strong>Model registry</strong>
-          <pre>{JSON.stringify({ selectedModel, upscaler: selectedUpscaler }, null, 2)}</pre>
+          <strong>Current selection</strong>
+          <pre>{JSON.stringify({ task: taskId, model: selectedModel?.label, inputs }, null, 2)}</pre>
         </div>
       ) : null}
     </>

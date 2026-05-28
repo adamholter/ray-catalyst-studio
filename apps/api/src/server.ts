@@ -9,7 +9,7 @@ import {
   modelsForTask
 } from "@ray-catalyst/core";
 import { config } from "./config";
-import { executeRun } from "./runner";
+import { executeRun, executeUpscale } from "./runner";
 import { getRun, listRuns } from "./store/runStore";
 
 export function createApp() {
@@ -75,6 +75,16 @@ export function createApp() {
     }
   });
 
+  app.post("/api/runs/:id/upscale", async (req, res, next) => {
+    try {
+      const run = await executeUpscale(req.params.id, req.body.upscalerId, req.body.imageUrl);
+      res.status(run.status === "failed" ? 500 : 200).json({ run });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+
   app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
     const message = error instanceof Error ? error.message : String(error);
     res.status(400).json({ error: message });
@@ -83,7 +93,7 @@ export function createApp() {
   return app;
 }
 
-if (process.env.NODE_ENV !== "test") {
+if (process.env.NODE_ENV !== "test" || process.env.CATALYST_API_PORT) {
   createApp().listen(config.port, () => {
     console.log(`Catalyst API listening on http://127.0.0.1:${config.port} (${config.providerMode})`);
   });

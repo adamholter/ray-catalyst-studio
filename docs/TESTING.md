@@ -16,7 +16,8 @@ The Playwright tests verify:
 - A mockup run can be created.
 - Results appear in the masonry grid.
 - Generated images keep a portrait aspect ratio.
-- SynthID/upscaler metadata is visible in the inspector.
+- Internal model/process notes are not visible in the main UI.
+- Result actions are available from an individual result modal.
 
 ## Live Testing
 

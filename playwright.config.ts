@@ -4,13 +4,13 @@ export default defineConfig({
   testDir: "tests/e2e",
   timeout: 90_000,
   use: {
-    baseURL: "http://127.0.0.1:5190",
+    baseURL: "http://127.0.0.1:5290",
     trace: "retain-on-failure"
   },
   webServer: {
-    command: "CATALYST_PROVIDER_MODE=mock CATALYST_API_PORT=5191 CATALYST_WEB_PORT=5190 npm run dev",
-    url: "http://127.0.0.1:5190",
-    reuseExistingServer: true,
+    command: "CATALYST_PROVIDER_MODE=mock CATALYST_API_PORT=5291 CATALYST_WEB_PORT=5290 npm run dev",
+    url: "http://127.0.0.1:5290",
+    reuseExistingServer: false,
     timeout: 120_000
   },
   projects: [

@@ -4,7 +4,7 @@ Composable creative-generation studio for Ray.
 
 This repo replaces one-off static Catalyst tools with a separated frontend/backend architecture:
 
-- `packages/core`: shared model registry, input/output contracts, SynthID policy, upscaler registry.
+- `packages/core`: shared model registry, input/output contracts, and result-action registry.
 - `apps/api`: backend API that owns provider calls and secrets.
 - `apps/web`: frontend workbench that renders model controls from backend metadata.
 - `skills/ray-catalyst`: embedded agent instructions for safe future changes.
@@ -23,11 +23,11 @@ Then open:
 http://127.0.0.1:5190
 ```
 
-The default provider mode is `mock`, so normal development and tests do not spend API money.
+If `FAL_KEY` is present, the local app runs live by default. Automated tests force mock mode on separate test ports so routine validation does not spend API money.
 
 ## Live Provider Mode
 
-Only use live mode when a real provider test is necessary.
+Only run extra live generations when a real provider test is necessary.
 
 ```sh
 cp .env.example .env

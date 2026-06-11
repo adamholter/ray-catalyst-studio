@@ -1,5 +1,7 @@
 import cors from "cors";
 import crypto from "node:crypto";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import express from "express";
 import {
   MODEL_REGISTRY,
@@ -14,6 +16,7 @@ import { config } from "./config";
 import { enqueueRun, executeImageEdit, executeUpscale, executeVectorize } from "./runner";
 import { deleteRun, getRun, listRuns, saveRun } from "./store/runStore";
 import { convertRunToMockup, editMockupLayout } from "./providers/extractor";
+import { getStoredAsset } from "./store/assetStorage";
 
 export function createApp() {
   const app = express();
@@ -24,11 +27,41 @@ export function createApp() {
     res.json({
       ok: true,
       providerMode: config.providerMode,
+      storeDriver: config.storeDriver,
+      assetStorageDriver: config.assetStorageDriver,
+      llmProvider: config.llmProvider,
       liveProvidersConfigured: {
         fal: Boolean(config.falKey),
-        openRouter: Boolean(config.openRouterKey)
+        openRouter: Boolean(config.openRouterKey) || (config.llmProvider === "fal-openrouter" && Boolean(config.falKey)),
+        postgres: config.storeDriver !== "postgres" || Boolean(config.databaseUrl),
+        r2: config.assetStorageDriver !== "r2" || Boolean(config.r2.bucket && config.r2.endpoint)
       }
     });
+  });
+
+  app.get(/^\/api\/assets\/(.+)$/, async (req, res, next) => {
+    try {
+      const key = decodeURIComponent(String(req.params[0] || ""));
+      if (!key || key.includes("..")) {
+        res.status(400).json({ error: "Invalid asset key" });
+        return;
+      }
+      const asset = await getStoredAsset(key);
+      if (!asset) {
+        res.status(404).json({ error: "Asset not found" });
+        return;
+      }
+      if (asset.contentType) res.setHeader("Content-Type", asset.contentType);
+      if (asset.contentLength) res.setHeader("Content-Length", String(asset.contentLength));
+      res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+      if (typeof asset.body === "string" || asset.body instanceof Uint8Array) {
+        res.send(asset.body);
+        return;
+      }
+      asset.body.pipe(res);
+    } catch (error) {
+      next(error);
+    }
   });
 
   app.get("/api/capabilities", (_req, res) => {
@@ -273,6 +306,20 @@ export function createApp() {
     }
   });
 
+  const webDistCandidates = [
+    process.env.CATALYST_WEB_DIST_DIR,
+    join(process.cwd(), "apps", "web", "dist"),
+    join(process.cwd(), "..", "web", "dist"),
+    join(process.cwd(), "..", "..", "apps", "web", "dist")
+  ].filter(Boolean) as string[];
+  const webDistPath = webDistCandidates.find((candidate) => existsSync(join(candidate, "index.html")));
+  const webIndexPath = webDistPath ? join(webDistPath, "index.html") : "";
+  if (webDistPath && existsSync(webIndexPath)) {
+    app.use(express.static(webDistPath));
+    app.get(/^(?!\/api(?:\/|$)).*/, (_req, res) => {
+      res.sendFile(webIndexPath);
+    });
+  }
 
   app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
     const message = error instanceof Error ? error.message : String(error);
@@ -282,8 +329,16 @@ export function createApp() {
   return app;
 }
 
+let activeServer: ReturnType<ReturnType<typeof createApp>["listen"]> | undefined;
+
 if (process.env.NODE_ENV !== "test" || process.env.CATALYST_API_PORT) {
-  createApp().listen(config.port, () => {
+  activeServer = createApp().listen(config.port, () => {
     console.log(`Catalyst API listening on http://127.0.0.1:${config.port} (${config.providerMode})`);
   });
+
+  const shutdown = () => {
+    activeServer?.close(() => process.exit(0));
+  };
+  process.once("SIGINT", shutdown);
+  process.once("SIGTERM", shutdown);
 }

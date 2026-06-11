@@ -30,6 +30,9 @@ Use this skill whenever changing Catalyst Studio.
 5. **Do not cap OpenRouter completions.**
    Do not set `max_tokens` or `max_completion_tokens` on OpenRouter calls. Catalyst uses long strict-JSON responses with embedded HTML/CSS; caps cause truncation and broken edits.
 
+6. **Use branches for collaboration.**
+   Do not push directly to `main`. Use short-lived branches and wait for user confirmation before syncing.
+
 ## Architecture Rules
 
 - `packages/core/src/registry.ts` is the source of truth for model metadata:
@@ -41,6 +44,7 @@ Use this skill whenever changing Catalyst Studio.
   - SynthID/watermark policy
   - default postprocessors/upscalers
 - `apps/api` owns provider execution, queue polling, postprocessing, storage, and validation.
+- Hosted mode uses Postgres for run records and Cloudflare R2 for generated assets. Read `docs/HOSTED_DEPLOYMENT.md` before changing hosted/runtime behavior.
 - `apps/web` renders controls from `/api/capabilities`. It should not know provider endpoint details.
 - Upscalers are interchangeable. Add them to `UPSCALER_REGISTRY` and call them through the backend runner.
 - Models that may carry SynthID should set `synthId.applyUpscaleByDefault = true` only when the product wants the default cleanup path.
@@ -80,5 +84,7 @@ When Ray asks for a new feature such as slide presentations:
 - For image-to-website conversion, use the agent pipeline: Agents SDK + OpenRouter planner, red-box full-mockup overlays per asset, image-model extraction from the marked full mockup, and Pixelcut background removal only for transparent cutouts.
 - Do not use hidden static browser API keys.
 - Do not hand-roll OpenRouter fetch calls; use `apps/api/src/providers/openrouter.ts`.
+- Prefer `CATALYST_LLM_PROVIDER=fal-openrouter` for Ray's normal setup so `FAL_KEY` can power both image models and LLM planning.
+- Do not rely on fal media URLs as durable storage for shared/client work. Copy generated assets to R2 when hosted storage is enabled.
 - For the `mockup` task, do not reinterpret "mockup" as a browser/device presentation. It means the standalone page or interface design unless the user explicitly asks for device framing.
 - Do not tell Ray to restart the server; do it.

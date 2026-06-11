@@ -38,6 +38,12 @@ export type GeneratedImage = {
   operation?: "generated" | "edited" | "enhanced" | "vectorized";
   modelId?: string;
   prompt?: string;
+  storage?: {
+    provider: "r2";
+    key: string;
+    sourceUrl?: string;
+    storedAt: string;
+  };
 };
 
 export type ExtractedAsset = {
@@ -58,6 +64,12 @@ export type ExtractedAsset = {
     applied?: boolean;
     reason?: string;
     modelId?: string;
+  };
+  storage?: {
+    provider: "r2";
+    key: string;
+    sourceUrl?: string;
+    storedAt: string;
   };
   source?: {
     imageUrl: string;
@@ -151,6 +163,18 @@ export type RunRecord = {
   model: Pick<ModelSpec, "id" | "label" | "provider" | "endpoint" | "synthId" | "defaultPostprocessors">;
   output?: RunOutput;
   error?: string;
+  modelInvocations?: Array<{
+    id: string;
+    provider: "fal" | "openrouter" | "mock" | "internal";
+    endpoint: string;
+    modelId?: string;
+    requestId?: string;
+    operation: "generate" | "edit" | "enhance" | "vectorize" | "upscale" | "plan" | "extract";
+    status: "submitted" | "succeeded" | "failed";
+    createdAt: string;
+    completedAt?: string;
+    estimatedCostUsd?: number;
+  }>;
   events: Array<{ at: string; message: string }>;
 };
 

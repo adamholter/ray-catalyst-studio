@@ -44,12 +44,17 @@ export async function callFalQueue(endpoint: string, input: Record<string, unkno
   }
 
   const queueUrl = `https://queue.fal.run/${endpoint}`;
+  const headers: Record<string, string> = {
+    Authorization: `Key ${config.falKey}`,
+    "Content-Type": "application/json"
+  };
+  if (config.falObjectLifecyclePreference) {
+    headers["X-Fal-Object-Lifecycle-Preference"] = config.falObjectLifecyclePreference;
+  }
+
   const submit = await fetch(queueUrl, {
     method: "POST",
-    headers: {
-      Authorization: `Key ${config.falKey}`,
-      "Content-Type": "application/json"
-    },
+    headers,
     body: JSON.stringify(input)
   });
   const submitted = (await readJson(submit)) as {

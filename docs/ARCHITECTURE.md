@@ -23,12 +23,28 @@ The registry is how the frontend learns the "ins and outs" of each model: input 
 - `POST /api/runs/:id/upscale`: applies a result-level enhancement when the user asks for it.
 - `GET /api/runs`: returns local run history.
 - `GET /api/runs/:id`: returns one run.
+- `GET /api/assets/...`: streams persisted R2 assets when a private R2 bucket is used.
 
 Provider credentials stay in backend env vars.
+
+### Hosted Persistence
+
+The backend supports two storage modes:
+
+- file mode, the default for local mock development
+- Postgres mode, enabled with `CATALYST_STORE_DRIVER=postgres` and `DATABASE_URL`
+
+The `RunRecord` remains the API contract. In Postgres mode, the initial durable schema stores each run as JSONB so the hosted migration does not require a risky rewrite of the app.
+
+Image and SVG assets can be copied into Cloudflare R2 by setting `CATALYST_ASSET_STORAGE_DRIVER=r2` plus R2 credentials. When enabled, the save path copies generated images, edited images, vectorized SVGs, extracted mockup assets, and brand assets into R2. The frontend keeps using normal image URLs; those URLs either point to `R2_PUBLIC_BASE_URL` or same-origin `/api/assets/...`.
+
+Do not store generated assets in Git. Do not rely on fal.ai media URLs as the durable source of truth for shared/client work.
 
 ### OpenRouter Calls
 
 Use `apps/api/src/providers/openrouter.ts` for OpenRouter requests. Do not hand-roll separate OpenRouter `fetch` calls in feature providers.
+
+By default, Catalyst can route LLM calls through fal's OpenRouter-compatible endpoint when `FAL_KEY` is configured. Set `CATALYST_LLM_PROVIDER=openrouter` only when a separate `OPENROUTER_API_KEY` should be used.
 
 Do not set `max_tokens` or `max_completion_tokens`. Catalyst often asks LLMs to return strict JSON that contains full HTML/CSS strings; token caps can truncate the response and make downstream JSON parsing fail or silently preserve stale output.
 

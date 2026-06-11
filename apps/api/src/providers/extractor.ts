@@ -6,7 +6,7 @@ import sharp from "sharp";
 import { z } from "zod";
 import { config } from "../config";
 import { callFalDirect, callFalQueue, uploadFalFile } from "./fal";
-import { callOpenRouter } from "./openrouter";
+import { callOpenRouter, hasLlmCredentials } from "./openrouter";
 
 type Crop = {
   x: number;
@@ -1301,7 +1301,7 @@ export async function convertRunToMockup(run: RunRecord): Promise<EditableMockup
   let spec: LayoutSpec | null = null;
   let layoutModel: string | undefined;
 
-  if (config.openRouterKey) {
+  if (hasLlmCredentials()) {
     try {
       spec = await analyzeLayoutWithOpenRouter(sourceImageUrl, prompt, width, height);
       layoutModel = config.imageToWebsiteAgentModel;
@@ -1314,7 +1314,7 @@ export async function convertRunToMockup(run: RunRecord): Promise<EditableMockup
   const assets = await extractCleanAssets(sourceImageUrl, width, height, layoutSpec.assets);
   const finalSpec = { ...layoutSpec, assets };
   let code: FrontendCode | null = null;
-  if (config.openRouterKey) {
+  if (hasLlmCredentials()) {
     try {
       code = await codeEditableFrontendWithOpenRouter(sourceImageUrl, prompt, width, height, finalSpec);
     } catch (error) {
@@ -1326,8 +1326,12 @@ export async function convertRunToMockup(run: RunRecord): Promise<EditableMockup
 
 export async function editMockupLayout(mockup: EditableMockup, prompt: string): Promise<EditableMockup> {
   if (!prompt.trim()) return mockup;
-  if (!config.openRouterKey) {
-    throw new Error("OPENROUTER_API_KEY is required for prompt-to-edit changes.");
+  if (!hasLlmCredentials()) {
+    throw new Error(
+      config.llmProvider === "fal-openrouter"
+        ? "FAL_KEY is required for prompt-to-edit changes."
+        : "OPENROUTER_API_KEY is required for prompt-to-edit changes."
+    );
   }
 
   const text = await callOpenRouter(

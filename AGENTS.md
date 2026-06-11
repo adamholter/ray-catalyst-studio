@@ -14,12 +14,14 @@ Start with `docs/RAY_HANDOFF.md` for the complete Ray-facing handoff, setup, arc
    ```
 2. If remote changes exist, pull/rebase them before starting unless doing so would overwrite local user work.
 3. Never commit secrets, real client data, generated API keys, or provider tokens.
+4. Use a short-lived feature branch for code changes. Do not push directly to `main`.
 
 ## During Work
 
 - Put model/provider knowledge in `packages/core/src/registry.ts`.
 - Put provider execution in `apps/api/src/providers/**` and `apps/api/src/runner.ts`.
 - Keep provider keys server-side only.
+- Keep generated runs/assets in Postgres/R2 or local `.data`, never in Git.
 - Make the frontend render from `/api/capabilities`; do not hard-code model-specific forms in React components.
 - Add or update tests for every model contract or workflow change.
 - Use mock mode for routine tests.
@@ -37,6 +39,15 @@ Start with `docs/RAY_HANDOFF.md` for the complete Ray-facing handoff, setup, arc
 3. Open the app and test the real user path.
 4. Report what changed, what was tested, and what remains.
 5. Do not push/sync to GitHub until the user explicitly confirms the app is working.
+
+## Hosted Mode
+
+For hosted collaboration, read `docs/HOSTED_DEPLOYMENT.md`.
+
+- The production app is one Node service that serves both `/api/*` and the built React app.
+- Use Postgres for run records and Cloudflare R2 for generated assets.
+- `FAL_KEY` should be the only required provider key for Ray's normal setup; LLM planning can use fal's OpenRouter-compatible endpoint via `CATALYST_LLM_PROVIDER=fal-openrouter`.
+- Do not rely on fal media URLs, browser session state, or local files as the durable store for shared work.
 
 ## Non-technical User Rule
 

@@ -13,6 +13,8 @@ Catalyst Studio is a local creative-generation workbench for design workflows Ra
 
 The app is local-first. Provider API keys stay on the backend. Routine tests run in mock mode so they do not spend API money.
 
+The app is also prepared for hosted collaboration. In hosted mode, code comes from GitHub, runs live on one always-on Node service, stores run records in Postgres, and copies generated assets into Cloudflare R2.
+
 ## First Commands For An Agent
 
 Start every work session by checking the real repo state:
@@ -63,10 +65,25 @@ If Ray has live keys available, set them only in `.env` or the shell environment
 ```sh
 CATALYST_PROVIDER_MODE=live
 FAL_KEY=...
-OPENROUTER_API_KEY=...
+CATALYST_LLM_PROVIDER=fal-openrouter
 ```
 
 Never put API keys in React code, screenshots, committed files, or chat messages.
+
+If a separate OpenRouter key is used later, set `CATALYST_LLM_PROVIDER=openrouter` and `OPENROUTER_API_KEY=...`. Otherwise fal's OpenRouter-compatible endpoint is enough for prompt enhancement/planning.
+
+## Hosted Collaboration Setup
+
+For a shared hosted version, read [HOSTED_DEPLOYMENT.md](HOSTED_DEPLOYMENT.md).
+
+Short version:
+
+- host the built app as one always-on Node service
+- set `CATALYST_STORE_DRIVER=postgres` and `DATABASE_URL`
+- set `CATALYST_ASSET_STORAGE_DRIVER=r2` and R2 credentials
+- keep `FAL_KEY` server-side only
+- deploy from GitHub `main`
+- keep generated assets and run history in Postgres/R2, not Git
 
 ## Known Routes
 
@@ -88,9 +105,10 @@ Use the architecture instead of patching around it.
 - `apps/api/src/runner.ts`: generation, enhancement, vectorization, edit-image, and conversion orchestration.
 - `apps/api/src/providers/fal.ts`: fal queue/direct calls.
 - `apps/api/src/providers/openrouter.ts`: shared OpenRouter helper. Do not hand-roll OpenRouter `fetch` calls.
+- `apps/api/src/store/runStore.ts`: file/Postgres run storage adapter.
+- `apps/api/src/store/assetStorage.ts`: R2 asset persistence and retrieval.
 - `apps/api/src/providers/extractor.ts`: raster mockup to editable HTML/CSS pipeline.
 - `apps/api/src/providers/brandPipeline.ts`: Brand Catalyst pipeline.
-- `apps/api/src/store/runStore.ts`: durable local run storage. It keeps fal.ai storage URLs instead of only browser-session state.
 - `apps/web/src/App.tsx`: tool hub, task workbench, metadata-driven model controls.
 - `apps/web/src/components/RunResults.tsx`: gallery, result modal, prompt copy, vector x-ray, enhancement, vectorization, edits, delete.
 - `apps/web/src/components/EditableMockupPage.tsx`: upload-based editable conversion entrypoint.

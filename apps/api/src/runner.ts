@@ -48,6 +48,16 @@ function event(message: string) {
   return { at: now(), message };
 }
 
+type ModelInvocation = NonNullable<RunRecord["modelInvocations"]>[number];
+
+function invocation(input: Omit<ModelInvocation, "id" | "createdAt">): ModelInvocation {
+  return {
+    id: crypto.randomUUID(),
+    createdAt: now(),
+    ...input
+  };
+}
+
 function getImageUrl(item: unknown): GeneratedImage | null {
   if (!item) return null;
   if (typeof item === "string") return { url: item };
@@ -380,21 +390,46 @@ async function maybeUpscale(output: RunOutput, request: CreateRunRequest, run: R
     upscale_factor: 4,
     checkpoint: "v2"
   });
+  run.modelInvocations = [
+    ...(run.modelInvocations || []),
+    invocation({
+      provider: "fal",
+      endpoint: upscaler.endpoint,
+      modelId: upscalerId,
+      requestId: result.requestId,
+      operation: "upscale",
+      status: "succeeded",
+      completedAt: now()
+    })
+  ];
   return normalizeOutput(result.data);
 }
 
-async function callLiveModel(model: ModelSpec, request: CreateRunRequest): Promise<RunOutput> {
+async function callLiveModel(model: ModelSpec, request: CreateRunRequest): Promise<{ output: RunOutput; invocations: ModelInvocation[] }> {
   const requestedCount = Number(request.inputs.count || 1);
   const count = Math.max(1, Math.min(Number.isFinite(requestedCount) ? requestedCount : 1, 10));
   const images: GeneratedImage[] = [];
   const rawResponses: unknown[] = [];
+  const invocations: ModelInvocation[] = [];
   let lastError: unknown = null;
 
   for (let index = 0; index < count; index += 1) {
+    const endpoint = model.id === "recraft-v4" ? recraftEndpoint(request.inputs) : model.endpoint;
     try {
-      const result = await callFalQueue(model.id === "recraft-v4" ? recraftEndpoint(request.inputs) : model.endpoint, buildProviderInput(request, model));
+      const result = await callFalQueue(endpoint, buildProviderInput(request, model));
       const output = normalizeOutput(result.data);
-      rawResponses.push(result.data);
+      rawResponses.push({ requestId: result.requestId, data: result.data });
+      invocations.push(
+        invocation({
+          provider: "fal",
+          endpoint,
+          modelId: model.id,
+          requestId: result.requestId,
+          operation: "generate",
+          status: "succeeded",
+          completedAt: now()
+        })
+      );
       if (output.images?.length) images.push(...output.images);
     } catch (error) {
       lastError = error;
@@ -403,7 +438,18 @@ async function callLiveModel(model: ModelSpec, request: CreateRunRequest): Promi
       const fallbackModel = getModel("grok-imagine");
       const fallback = await callFalQueue(fallbackModel.endpoint, buildProviderInput(request, fallbackModel));
       const fallbackOutput = normalizeOutput(fallback.data);
-      rawResponses.push({ fallbackFrom: model.id, data: fallback.data });
+      rawResponses.push({ fallbackFrom: model.id, requestId: fallback.requestId, data: fallback.data });
+      invocations.push(
+        invocation({
+          provider: "fal",
+          endpoint: fallbackModel.endpoint,
+          modelId: fallbackModel.id,
+          requestId: fallback.requestId,
+          operation: "generate",
+          status: "succeeded",
+          completedAt: now()
+        })
+      );
       if (fallbackOutput.images?.length) images.push(...fallbackOutput.images);
     }
   }
@@ -412,7 +458,7 @@ async function callLiveModel(model: ModelSpec, request: CreateRunRequest): Promi
     throw lastError instanceof Error ? lastError : new Error(String(lastError));
   }
 
-  return { images, raw: rawResponses.length === 1 ? rawResponses[0] : rawResponses };
+  return { output: { images, raw: rawResponses.length === 1 ? rawResponses[0] : rawResponses }, invocations };
 }
 
 async function createRunRecord(request: CreateRunRequest): Promise<RunRecord> {
@@ -492,10 +538,14 @@ async function processRun(run: RunRecord): Promise<RunRecord> {
     );
     await saveRun(run);
 
-    const output =
-      config.providerMode === "mock" || executionModel.provider === "mock"
-        ? await runMockModel(model, run.request)
-        : await callLiveModel(executionModel, run.request);
+    let output: RunOutput;
+    if (config.providerMode === "mock" || executionModel.provider === "mock") {
+      output = await runMockModel(model, run.request);
+    } else {
+      const liveResult = await callLiveModel(executionModel, run.request);
+      output = liveResult.output;
+      run.modelInvocations = [...(run.modelInvocations || []), ...liveResult.invocations];
+    }
 
     run.output = await maybeUpscale(output, run.request, run);
     run.status = "succeeded";
@@ -552,6 +602,18 @@ export async function executeUpscale(runId: string, upscalerId?: string, imageUr
         upscale_factor: 4,
         checkpoint: "v2"
       });
+      run.modelInvocations = [
+        ...(run.modelInvocations || []),
+        invocation({
+          provider: "fal",
+          endpoint: upscaler.endpoint,
+          modelId: targetUpscalerId,
+          requestId: result.requestId,
+          operation: "upscale",
+          status: "succeeded",
+          completedAt: now()
+        })
+      ];
       newOutput = normalizeOutput(result.data);
     }
 
@@ -604,6 +666,18 @@ export async function executeVectorize(runId: string, imageUrl?: string): Promis
       const result = await callFalQueue("fal-ai/recraft/vectorize", {
         image_url: targetImageUrl
       });
+      run.modelInvocations = [
+        ...(run.modelInvocations || []),
+        invocation({
+          provider: "fal",
+          endpoint: "fal-ai/recraft/vectorize",
+          modelId: "recraft-vectorize",
+          requestId: result.requestId,
+          operation: "vectorize",
+          status: "succeeded",
+          completedAt: now()
+        })
+      ];
       newOutput = normalizeOutput(result.data);
     }
 
@@ -730,21 +804,37 @@ export async function executeImageEdit(
 
     const baseModelId = editBaseGenerationModel(modelId);
 
-    const newOutput =
-      config.providerMode === "mock"
-        ? await runMockModel(getModel(baseModelId), {
-            taskId: run.request.taskId,
-            modelId: baseModelId,
-            inputs: {
-              prompt,
-              count: 1,
-              aspectRatio: run.request.inputs.aspectRatio || "1:1",
-              ...(baseModelId === "gpt-image-2" ? { quality: editQuality } : {}),
-              ...(baseModelId === "grok-imagine-quality" || baseModelId === "grok-imagine" ? { resolution: editResolution } : {})
-            },
-            attachments: []
-          })
-        : normalizeOutput((await callFalQueue(editModel.endpoint || editEndpoint(modelId), input)).data);
+    let newOutput: RunOutput;
+    if (config.providerMode === "mock") {
+      newOutput = await runMockModel(getModel(baseModelId), {
+        taskId: run.request.taskId,
+        modelId: baseModelId,
+        inputs: {
+          prompt,
+          count: 1,
+          aspectRatio: run.request.inputs.aspectRatio || "1:1",
+          ...(baseModelId === "gpt-image-2" ? { quality: editQuality } : {}),
+          ...(baseModelId === "grok-imagine-quality" || baseModelId === "grok-imagine" ? { resolution: editResolution } : {})
+        },
+        attachments: []
+      });
+    } else {
+      const endpoint = editModel.endpoint || editEndpoint(modelId);
+      const result = await callFalQueue(endpoint, input);
+      run.modelInvocations = [
+        ...(run.modelInvocations || []),
+        invocation({
+          provider: "fal",
+          endpoint,
+          modelId,
+          requestId: result.requestId,
+          operation: "edit",
+          status: "succeeded",
+          completedAt: now()
+        })
+      ];
+      newOutput = normalizeOutput(result.data);
+    }
 
     const edited = newOutput.images?.[0];
     if (!edited) throw new Error("Image edit returned no image");

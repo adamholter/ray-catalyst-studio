@@ -10,6 +10,8 @@ This repo replaces one-off static Catalyst tools with a separated frontend/backe
 - `skills/ray-catalyst`: embedded agent instructions for safe future changes.
 - `tests/e2e`: end-to-end workflow tests that run in mock mode by default.
 
+The app is still local-friendly, but it is now prepared for hosted collaboration: the API can serve the built web app as one always-on service, store runs in Postgres, and copy generated assets into Cloudflare R2 when those env vars are configured.
+
 ## Local Run
 
 ```sh
@@ -47,6 +49,7 @@ Before editing, read:
 - [skills/ray-catalyst/SKILL.md](skills/ray-catalyst/SKILL.md)
 - [docs/ONBOARDING.md](docs/ONBOARDING.md)
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- [docs/HOSTED_DEPLOYMENT.md](docs/HOSTED_DEPLOYMENT.md)
 - [docs/ADDING_FEATURES.md](docs/ADDING_FEATURES.md)
 
 Do not push/sync code to GitHub until the user confirms the app is working.
@@ -54,3 +57,5 @@ Do not push/sync code to GitHub until the user confirms the app is working.
 ## Share Handoff
 
 For Ray, start with [docs/RAY_HANDOFF.md](docs/RAY_HANDOFF.md). It explains what the app does, how his Claude agent should run it locally, where the architecture lives, and what to test before calling work done.
+
+For hosted collaboration, use [docs/HOSTED_DEPLOYMENT.md](docs/HOSTED_DEPLOYMENT.md). Do not put generated assets or provider keys in Git.

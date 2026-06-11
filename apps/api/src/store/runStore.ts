@@ -1,7 +1,11 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import pg from "pg";
 import type { GeneratedImage, RunOutput, RunRecord } from "@ray-catalyst/core";
 import { config } from "../config";
+import { persistRunAssets } from "./assetStorage";
+
+const { Pool } = pg;
 
 const storePath = join(process.cwd(), config.dataDir, "runs.json");
 const legacyStorePath = join(process.cwd(), ".data", "runs.json");
@@ -13,42 +17,6 @@ async function readRunsFile(path: string): Promise<RunRecord[]> {
   } catch {
     return [];
   }
-}
-
-function isFalStorageUrl(url: string) {
-  try {
-    const parsed = new URL(url);
-    return (
-      parsed.protocol === "https:" &&
-      (parsed.hostname === "fal.media" ||
-        parsed.hostname.endsWith(".fal.media") ||
-        parsed.hostname === "fal.ai" ||
-        parsed.hostname.endsWith(".fal.ai"))
-    );
-  } catch {
-    return false;
-  }
-}
-
-function hasOnlyStoredFalUrls(run: RunRecord) {
-  const images = run.output?.images || [];
-  return images.length > 0 && images.every((image) => isFalStorageUrl(image.url));
-}
-
-function shouldPersistRun(run: RunRecord) {
-  if (config.providerMode !== "live") return true;
-  if (run.output?.mockup) return true;
-  if (run.output?.brand) return true;
-  if (!run.output?.images?.length) return run.status !== "succeeded";
-  return hasOnlyStoredFalUrls(run);
-}
-
-function shouldListRun(run: RunRecord) {
-  if (config.providerMode !== "live") return true;
-  if (run.output?.mockup) return true;
-  if (run.output?.brand) return true;
-  if (!run.output?.images?.length) return run.status !== "succeeded";
-  return hasOnlyStoredFalUrls(run);
 }
 
 function isStaleRunningRun(run: RunRecord) {
@@ -87,7 +55,8 @@ function cleanImage(image: GeneratedImage): GeneratedImage {
     ...(typeof image.parentIndex === "number" ? { parentIndex: image.parentIndex } : {}),
     ...(image.operation ? { operation: image.operation } : {}),
     ...(image.modelId ? { modelId: image.modelId } : {}),
-    ...(image.prompt ? { prompt: image.prompt } : {})
+    ...(image.prompt ? { prompt: image.prompt } : {}),
+    ...(image.storage ? { storage: image.storage } : {})
   };
 }
 
@@ -122,62 +91,155 @@ function cleanRun(run: RunRecord): RunRecord {
   return {
     ...run,
     error: run.status === "failed" ? cleanError(run.error) : undefined,
-    output: cleanOutput(run.output)
+    output: cleanOutput(run.output),
+    modelInvocations: run.modelInvocations?.map((invocation) => ({ ...invocation }))
   };
 }
 
-async function readRuns(): Promise<RunRecord[]> {
-  const primaryRuns = await readRunsFile(storePath);
-  if (primaryRuns.length || storePath === legacyStorePath || config.providerMode !== "live") {
-    return primaryRuns.map(normalizeRunState).map(cleanRun).filter(shouldListRun);
-  }
-  return (await readRunsFile(legacyStorePath)).map(normalizeRunState).map(cleanRun).filter(shouldListRun);
+function maxRuns() {
+  return Number.isFinite(config.maxStoredRuns) && config.maxStoredRuns > 0 ? config.maxStoredRuns : 250;
 }
 
-async function writeRuns(runs: RunRecord[]) {
-  await mkdir(dirname(storePath), { recursive: true });
-  const tempPath = `${storePath}.${process.pid}.${Date.now()}.tmp`;
-  await writeFile(tempPath, JSON.stringify(runs, null, 2));
-  await rename(tempPath, storePath);
+class FileRunStore {
+  async listRuns(): Promise<RunRecord[]> {
+    const primaryRuns = await readRunsFile(storePath);
+    if (primaryRuns.length || storePath === legacyStorePath || config.providerMode !== "live") {
+      return primaryRuns.map(normalizeRunState).map(cleanRun);
+    }
+    return (await readRunsFile(legacyStorePath)).map(normalizeRunState).map(cleanRun);
+  }
+
+  async getRun(id: string): Promise<RunRecord | undefined> {
+    return (await this.listRuns()).find((run) => run.id === id);
+  }
+
+  async deleteRun(id: string): Promise<boolean> {
+    const primaryRuns = await readRunsFile(storePath);
+    const legacyRuns = storePath === legacyStorePath ? [] : await readRunsFile(legacyStorePath);
+    const combinedRuns = primaryRuns.length ? primaryRuns : legacyRuns;
+    const nextRuns = combinedRuns.filter((run) => run.id !== id);
+    if (nextRuns.length === combinedRuns.length) return false;
+    await this.writeRuns(nextRuns.slice(0, maxRuns()));
+    return true;
+  }
+
+  async saveRun(run: RunRecord): Promise<RunRecord> {
+    const durableRun = await persistRunAssets(run);
+    const runs = await readRunsFile(storePath);
+    const existing = runs.findIndex((item) => item.id === durableRun.id);
+    const storedRun = cleanRun(durableRun);
+    if (existing >= 0) runs[existing] = storedRun;
+    else runs.unshift(storedRun);
+    await this.writeRuns(runs.slice(0, maxRuns()));
+    return durableRun;
+  }
+
+  private async writeRuns(runs: RunRecord[]) {
+    await mkdir(dirname(storePath), { recursive: true });
+    const tempPath = `${storePath}.${process.pid}.${Date.now()}.tmp`;
+    await writeFile(tempPath, JSON.stringify(runs, null, 2));
+    await rename(tempPath, storePath);
+  }
 }
+
+class PostgresRunStore {
+  private pool: pg.Pool | null = null;
+  private schemaReady: Promise<void> | null = null;
+
+  private getPool() {
+    if (!config.databaseUrl) {
+      throw new Error("CATALYST_STORE_DRIVER=postgres requires DATABASE_URL");
+    }
+    if (!this.pool) {
+      this.pool = new Pool({
+        connectionString: config.databaseUrl,
+        max: 5
+      });
+    }
+    return this.pool;
+  }
+
+  private async ensureSchema() {
+    if (!this.schemaReady) {
+      this.schemaReady = this.getPool().query(`
+        create table if not exists catalyst_runs (
+          id text primary key,
+          task_id text not null,
+          status text not null,
+          created_at timestamptz not null,
+          updated_at timestamptz not null,
+          run jsonb not null
+        );
+        create index if not exists catalyst_runs_updated_at_idx on catalyst_runs (updated_at desc);
+        create index if not exists catalyst_runs_task_id_idx on catalyst_runs (task_id);
+        create index if not exists catalyst_runs_status_idx on catalyst_runs (status);
+      `).then(() => undefined);
+    }
+    return this.schemaReady;
+  }
+
+  async listRuns(): Promise<RunRecord[]> {
+    await this.ensureSchema();
+    const result = await this.getPool().query("select run from catalyst_runs order by updated_at desc limit $1", [maxRuns()]);
+    return result.rows.map((row) => cleanRun(normalizeRunState(row.run as RunRecord)));
+  }
+
+  async getRun(id: string): Promise<RunRecord | undefined> {
+    await this.ensureSchema();
+    const result = await this.getPool().query("select run from catalyst_runs where id = $1", [id]);
+    const row = result.rows[0];
+    return row ? cleanRun(normalizeRunState(row.run as RunRecord)) : undefined;
+  }
+
+  async deleteRun(id: string): Promise<boolean> {
+    await this.ensureSchema();
+    const result = await this.getPool().query("delete from catalyst_runs where id = $1", [id]);
+    return Boolean(result.rowCount);
+  }
+
+  async saveRun(run: RunRecord): Promise<RunRecord> {
+    await this.ensureSchema();
+    const durableRun = await persistRunAssets(run);
+    const storedRun = cleanRun(durableRun);
+    await this.getPool().query(
+      `
+      insert into catalyst_runs (id, task_id, status, created_at, updated_at, run)
+      values ($1, $2, $3, $4, $5, $6)
+      on conflict (id) do update set
+        task_id = excluded.task_id,
+        status = excluded.status,
+        updated_at = excluded.updated_at,
+        run = excluded.run
+      `,
+      [
+        storedRun.id,
+        storedRun.request.taskId,
+        storedRun.status,
+        storedRun.createdAt,
+        storedRun.updatedAt,
+        JSON.stringify(storedRun)
+      ]
+    );
+    return durableRun;
+  }
+}
+
+const store = config.storeDriver === "postgres" ? new PostgresRunStore() : new FileRunStore();
 
 export async function listRuns(): Promise<RunRecord[]> {
-  return readRuns();
+  return store.listRuns();
 }
 
 export async function getRun(id: string): Promise<RunRecord | undefined> {
-  return (await readRuns()).find((run) => run.id === id);
+  return store.getRun(id);
 }
 
 export async function deleteRun(id: string): Promise<boolean> {
-  const primaryRuns = await readRunsFile(storePath);
-  const legacyRuns = storePath === legacyStorePath ? [] : await readRunsFile(legacyStorePath);
-  const combinedRuns = primaryRuns.length ? primaryRuns : legacyRuns;
-  const nextRuns = combinedRuns.filter((run) => run.id !== id);
-  if (nextRuns.length === combinedRuns.length) return false;
-  await writeRuns(nextRuns.slice(0, 100));
-  return true;
-}
-
-async function saveRunNow(run: RunRecord): Promise<RunRecord> {
-  const runs = await readRunsFile(storePath);
-  const existing = runs.findIndex((item) => item.id === run.id);
-
-  if (!shouldPersistRun(run)) {
-    if (existing >= 0) runs.splice(existing, 1);
-    await writeRuns(runs.slice(0, 100));
-    return run;
-  }
-
-  const storedRun = cleanRun(run);
-  if (existing >= 0) runs[existing] = storedRun;
-  else runs.unshift(storedRun);
-  await writeRuns(runs.slice(0, 100));
-  return run;
+  return store.deleteRun(id);
 }
 
 export async function saveRun(run: RunRecord): Promise<RunRecord> {
-  const operation = saveQueue.then(() => saveRunNow(run));
+  const operation = saveQueue.then(() => store.saveRun(run));
   saveQueue = operation.then(
     () => undefined,
     () => undefined

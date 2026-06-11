@@ -15,7 +15,9 @@
     "typecheck": "npm run typecheck -w packages/core && npm run typecheck -w apps/api && npm run typecheck -w apps/web",
     "test": "node scripts/check-source-rules.mjs && npm run test -w packages/core && npm run test -w apps/api && npm run test:e2e",
     "test:e2e": "playwright test",
-    "start": "concurrently -k -n api,web \"npm run start -w apps/api\" \"npm run preview -w apps/web\""
+    "migrate:runs": "tsx scripts/migrate-run-store.ts",
+    "start": "tsx apps/api/src/server.ts",
+    "start:split": "concurrently -k -n api,web \"npm run start -w apps/api\" \"npm run preview -w apps/web\""
   },
   "devDependencies": {
     "@playwright/test": "^1.57.0",

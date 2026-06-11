@@ -68,8 +68,13 @@ export function sanitizeEnhancedPrompt(prompt: string, enhancedPrompt: string, c
   return enhanced;
 }
 
+export function hasLlmCredentials() {
+  if (config.llmProvider === "fal-openrouter") return Boolean(config.falKey);
+  return Boolean(config.openRouterKey);
+}
+
 export async function enhancePrompt(prompt: string, context: string): Promise<string> {
-  if (!config.openRouterKey) return prompt;
+  if (!hasLlmCredentials()) return prompt;
 
   const enhanced = await callOpenRouter(
     [
@@ -93,15 +98,20 @@ export async function callOpenRouter(
   messages: Array<{ role: "system" | "user" | "assistant"; content: unknown }>,
   options: { json?: boolean; model?: string; temperature?: number; timeoutMs?: number } = {}
 ): Promise<string> {
-  if (!config.openRouterKey) {
-    throw new Error("OPENROUTER_API_KEY is not configured on the backend");
+  if (!hasLlmCredentials()) {
+    throw new Error(
+      config.llmProvider === "fal-openrouter"
+        ? "FAL_KEY is required for CATALYST_LLM_PROVIDER=fal-openrouter"
+        : "OPENROUTER_API_KEY is not configured on the backend"
+    );
   }
 
-  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+  const useFalOpenRouter = config.llmProvider === "fal-openrouter";
+  const response = await fetch(useFalOpenRouter ? "https://fal.run/openrouter/router/openai/v1/chat/completions" : "https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
     signal: options.timeoutMs ? AbortSignal.timeout(options.timeoutMs) : undefined,
     headers: {
-      Authorization: `Bearer ${config.openRouterKey}`,
+      Authorization: useFalOpenRouter ? `Key ${config.falKey}` : `Bearer ${config.openRouterKey}`,
       "Content-Type": "application/json",
       "HTTP-Referer": "https://ray-catalyst-studio.local",
       "X-Title": "Ray Catalyst Studio"

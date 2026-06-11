@@ -34,19 +34,6 @@ function svgDataUrl(label: string, subtitle: string, aspectRatio: string) {
 
 export async function runMockModel(model: ModelSpec, request: CreateRunRequest): Promise<RunOutput> {
   const prompt = String(request.inputs.prompt || "Untitled request");
-  if (model.id === "mock-deck-planner") {
-    return {
-      deck: {
-        title: "Mock deck plan",
-        slides: Array.from({ length: Number(request.inputs.slideCount || 6) }, (_, index) => ({
-          title: `Slide ${index + 1}`,
-          notes: `Plan for: ${prompt}`,
-          assetPrompt: `Create a clean slide visual for ${prompt}, slide ${index + 1}`
-        }))
-      }
-    };
-  }
-
   const count = Math.max(1, Math.min(Number(request.inputs.count || 1), 4));
   const aspectRatio = String(request.inputs.aspectRatio || "2:3");
   return {
@@ -100,4 +87,3 @@ export async function runMockVectorizer(output: RunOutput): Promise<RunOutput> {
     }
   };
 }
-

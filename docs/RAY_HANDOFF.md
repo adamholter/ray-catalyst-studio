@@ -10,7 +10,6 @@ Catalyst Studio is a local creative-generation workbench for design workflows Ra
 - Logo Catalyst: generate logos, optionally provide exact hex palettes, use Recraft vector mode, and vectorize raster logo outputs.
 - Editable Conversion: turn raster mockups into editable HTML/CSS with a canvas editor, source view, asset inspection, prompt-to-edit, and export.
 - Brand Catalyst: create a brand identity workflow from a brief and references.
-- Slide deck support: scaffolded as a `deck` task, currently mock/planner-only until a real deck provider is added.
 
 The app is local-first. Provider API keys stay on the backend. Routine tests run in mock mode so they do not spend API money.
 
@@ -77,6 +76,7 @@ Never put API keys in React code, screenshots, committed files, or chat messages
 - `/editable`: raster mockup to editable HTML/CSS.
 - `/brand` or `/brands`: Brand Catalyst.
 - `/asset`: intentionally redirects back to the tool hub. There is no standalone Asset Catalyst page.
+- `/deck` and `/decks`: intentionally redirect back to the tool hub. There is no slide deck generator in the current shareable surface.
 
 ## Architecture Map
 

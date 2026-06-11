@@ -109,7 +109,7 @@ function estimateCost(modelId: string, inputs: Record<string, unknown>) {
   return (prices[modelId] || 0) * count;
 }
 
-const taskIds: TaskId[] = ["mockup", "logo", "deck"];
+const taskIds: TaskId[] = ["mockup", "logo"];
 
 function getInitialTask(currentPath?: string): TaskId {
   const params = new URLSearchParams(window.location.search);
@@ -122,9 +122,7 @@ function getInitialTask(currentPath?: string): TaskId {
     mockup: "mockup",
     mockups: "mockup",
     logo: "logo",
-    logos: "logo",
-    deck: "deck",
-    decks: "deck"
+    logos: "logo"
   };
   return pathTasks[path] || "mockup";
 }
@@ -217,9 +215,7 @@ export function App() {
       mockup: "mockup",
       mockups: "mockup",
       logo: "logo",
-      logos: "logo",
-      deck: "deck",
-      decks: "deck"
+      logos: "logo"
     };
     const nextTask = pathTasks[path];
     if (nextTask) {
@@ -391,7 +387,7 @@ export function App() {
           <div className="hub-hero">
             <h1 className="hub-logo">✦ catalyst <span>studio</span></h1>
             <p className="hub-tagline">
-              An elegant suite of generative tools for high-fidelity mockups, vector branding, slide decks, and editable mockup conversion.
+              An elegant suite of generative tools for high-fidelity mockups, vector branding, and editable mockup conversion.
             </p>
           </div>
 
@@ -429,19 +425,6 @@ export function App() {
               <span className="hub-card-arrow">Convert Mockup →</span>
             </a>
 
-
-
-            <a href="/deck" className="hub-card" onClick={(e) => { e.preventDefault(); navigate("deck"); }}>
-              <div className="hub-card-icon">▤</div>
-              <div className="hub-card-meta">
-                <h2 className="hub-card-title">Slide Decks <span>presentations</span></h2>
-                <p className="hub-card-description">
-                  Plan robust presentation outlines, auto-generate slides, and compile beautiful assets for decks in seconds.
-                </p>
-              </div>
-              <span className="hub-card-arrow">Plan Deck →</span>
-            </a>
-
             <a href="/brand" className="hub-card" onClick={(e) => { e.preventDefault(); navigate("brand"); }}>
               <div className="hub-card-icon">✦</div>
               <div className="hub-card-meta">
@@ -466,7 +449,7 @@ export function App() {
   }
 
   const count = Number(inputs.count || 1);
-  const taskTag = taskId === "mockup" ? "mockups" : taskId === "logo" ? "logos" : "decks";
+  const taskTag = taskId === "logo" ? "logos" : "mockups";
   const cost = estimateCost(modelId, inputs);
 
   return (
@@ -501,7 +484,7 @@ export function App() {
                 rows={3}
                 value={String(inputs.prompt || "")}
                 onChange={(event) => setInput("prompt", event.target.value)}
-                placeholder="Describe the website, app screen, logo, or slide deck you want..."
+                placeholder="Describe the website, app screen, or logo you want..."
                 disabled={busy}
               />
 

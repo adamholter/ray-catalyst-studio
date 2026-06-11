@@ -597,34 +597,6 @@ button { cursor: pointer; }
 .run-card:hover .run-card-media img {
   transform: scale(1.02);
 }
-.deck-card-preview {
-  padding: 32px 20px;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  min-height: 180px;
-  background: var(--cream);
-  border-bottom: 1px solid var(--line);
-}
-.deck-card-preview .deck-icon {
-  font-size: 1.8rem;
-  color: var(--ink);
-}
-.deck-card-preview h3 {
-  margin: 0;
-  font-family: "Instrument Serif", serif;
-  font-size: 1.4rem;
-  font-weight: 400;
-  color: var(--ink);
-}
-.deck-card-preview p {
-  margin: 0;
-  font-size: 0.8rem;
-  color: var(--muted);
-}
 .empty-card-preview {
   padding: 40px 20px;
   text-align: center;
@@ -1288,52 +1260,6 @@ button { cursor: pointer; }
   font-size: 0.72rem;
   padding: 4px 8px;
   border-radius: var(--r-sm);
-}
-.modal-deck-wrapper {
-  width: 100%;
-  max-height: 70vh;
-  overflow-y: auto;
-  padding: 12px 0;
-}
-.modal-deck-slides {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  margin-top: 16px;
-}
-.modal-deck-slide {
-  background: var(--paper);
-  border: 1px solid var(--line);
-  border-radius: var(--r-md);
-  padding: 16px;
-}
-.slide-num {
-  font-family: "JetBrains Mono", monospace;
-  font-size: 0.7rem;
-  color: var(--muted);
-  text-transform: uppercase;
-}
-.modal-deck-slide h4 {
-  margin: 6px 0 8px;
-  font-size: 1.05rem;
-}
-.modal-deck-slide p {
-  margin: 0;
-  color: var(--muted);
-  font-size: 0.88rem;
-}
-.slide-prompt-box {
-  margin-top: 12px;
-  padding: 8px 12px;
-  background: var(--cream);
-  border-radius: var(--r-sm);
-  font-size: 0.76rem;
-  border-left: 3px solid var(--line);
-}
-.slide-prompt-box code {
-  display: block;
-  margin-top: 4px;
-  color: var(--muted);
 }
 .modal-no-media {
   text-align: center;

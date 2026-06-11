@@ -247,8 +247,8 @@ export function RunResults({
   }
 
   const tiles: ResultTile[] = runs.map((run) => ({ run, image: run.output?.images?.[0], index: 0 }));
-  const pluralName = taskId === "logo" ? "logos" : taskId === "asset" ? "assets" : taskId === "deck" ? "decks" : "mockups";
-  const singularName = taskId === "logo" ? "logo" : taskId === "asset" ? "asset" : taskId === "deck" ? "deck" : "mockup";
+  const pluralName = taskId === "logo" ? "logos" : taskId === "asset" ? "assets" : "mockups";
+  const singularName = taskId === "logo" ? "logo" : taskId === "asset" ? "asset" : "mockup";
   const canConvertToMockup = taskId === "mockup";
   const selectedEditModel = editModels.find((model) => model.id === editModelId) || editModels[0];
   const editModelFields = selectedEditModel?.inputFields || [];
@@ -391,7 +391,7 @@ export function RunResults({
               <div
                 className="run-card-media"
                 style={
-                  !image && !run.output?.deck && run.request?.inputs?.aspectRatio
+                  !image && run.request?.inputs?.aspectRatio
                     ? { aspectRatio: String(run.request.inputs.aspectRatio).replace(":", "/") }
                     : undefined
                 }
@@ -413,12 +413,6 @@ export function RunResults({
                     <ImagePreview image={image} alt={`Output from ${run.model.label}`} />
                     <span>Actions</span>
                   </button>
-                ) : run.output?.deck ? (
-                  <div className="deck-card-preview">
-                    <span className="deck-icon">✦</span>
-                    <h3>{run.output.deck.title}</h3>
-                    <p>{run.output.deck.slides.length} slides planned</p>
-                  </div>
                 ) : (
                   <div className={`run-card-overlay ${run.status}`}>
                     {run.status === "failed" ? (

@@ -6,7 +6,7 @@ Catalyst Studio is intentionally split into three layers.
 
 `packages/core` contains the contracts every layer uses:
 
-- `TASKS`: top-level creative jobs such as mockups, logos, assets, and decks.
+- `TASKS`: top-level creative jobs such as mockups, logos, assets, and brands.
 - `MODEL_REGISTRY`: model capability metadata.
 - `UPSCALER_REGISTRY`: interchangeable postprocessors.
 - `createRunRequestSchema`: request validation.

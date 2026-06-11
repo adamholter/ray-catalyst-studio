@@ -96,7 +96,6 @@ function cleanOutput(output: RunOutput | undefined): RunOutput | undefined {
   const next: RunOutput = {};
   if (output.images?.length) next.images = output.images.map(cleanImage);
   if (output.text) next.text = output.text;
-  if (output.deck) next.deck = output.deck;
   if (output.mockup) next.mockup = output.mockup;
   if (output.brand) next.brand = output.brand;
   return Object.keys(next).length ? next : undefined;

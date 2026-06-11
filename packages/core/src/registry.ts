@@ -1,4 +1,4 @@
-export type TaskId = "mockup" | "logo" | "asset" | "deck" | "brand";
+export type TaskId = "mockup" | "logo" | "asset" | "brand";
 export type ProviderId = "fal" | "internal" | "mock";
 export type FieldKind =
   | "text"
@@ -38,7 +38,7 @@ export type FieldSpec = {
 };
 
 export type OutputSpec = {
-  kind: "image" | "images" | "svg" | "deck" | "text" | "editable";
+  kind: "image" | "images" | "svg" | "text" | "editable";
   path: string;
   shape: Record<string, string>;
 };
@@ -288,12 +288,7 @@ export const TASKS: TaskSpec[] = [
     description: "Generate reusable imagery, textures, and campaign assets.",
     defaultModelId: "grok-imagine"
   },
-  {
-    id: "deck",
-    label: "Slide deck",
-    description: "Create deck assets and slide-plan artifacts from references.",
-    defaultModelId: "mock-deck-planner"
-  },
+
   {
     id: "brand",
     label: "Brand identity",
@@ -584,54 +579,7 @@ export const MODEL_REGISTRY: ModelSpec[] = [
       recommendedFor: ["Typography and text rendering", "Clean graphic layouts"]
     }
   },
-  {
-    id: "mock-deck-planner",
-    label: "Deck Planner (mock)",
-    taskIds: ["deck"],
-    provider: "mock",
-    endpoint: "mock/deck-planner",
-    costTier: "free-mock",
-    speed: "fast",
-    inputFields: [
-      basePromptField,
-      {
-        key: "references",
-        label: "Reference images",
-        kind: "images",
-        accepts: ["image/png", "image/jpeg", "image/webp"]
-      },
-      {
-        key: "slideCount",
-        label: "Slide count",
-        kind: "number",
-        defaultValue: 8
-      }
-    ],
-    providerInputMap: {
-      prompt: "prompt",
-      references: "references",
-      slideCount: "slide_count"
-    },
-    output: {
-      kind: "deck",
-      path: "deck",
-      shape: {
-        "deck.title": "string",
-        "deck.slides[]": "{title, notes, assetPrompt}"
-      }
-    },
-    synthId: {
-      status: "none",
-      note: "Planning text has no image watermark concern.",
-      applyUpscaleByDefault: false
-    },
-    defaultPostprocessors: [],
-    ui: {
-      shortName: "Deck",
-      accent: "#7C5A2D",
-      recommendedFor: ["Future slide-generation workflow scaffolding"]
-    }
-  },
+
   {
     id: "brand-identity-pipeline",
     label: "Brand Identity Pipeline",

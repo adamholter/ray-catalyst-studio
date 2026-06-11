@@ -137,10 +137,6 @@ export type BrandIdentityOutput = {
 export type RunOutput = {
   images?: GeneratedImage[];
   text?: string;
-  deck?: {
-    title: string;
-    slides: Array<{ title: string; notes: string; assetPrompt: string }>;
-  };
   mockup?: EditableMockup;
   brand?: BrandIdentityOutput;
   raw?: unknown;

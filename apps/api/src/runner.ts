@@ -69,7 +69,6 @@ function getImageUrl(item: unknown): GeneratedImage | null {
 }
 
 function normalizeOutput(raw: unknown): RunOutput {
-  if (raw && typeof raw === "object" && "deck" in raw) return raw as RunOutput;
   const data = raw as {
     image?: unknown;
     images?: unknown[];
@@ -385,10 +384,6 @@ async function maybeUpscale(output: RunOutput, request: CreateRunRequest, run: R
 }
 
 async function callLiveModel(model: ModelSpec, request: CreateRunRequest): Promise<RunOutput> {
-  if (model.output.kind === "deck") {
-    return normalizeOutput((await callFalQueue(model.endpoint, buildProviderInput(request, model))).data);
-  }
-
   const requestedCount = Number(request.inputs.count || 1);
   const count = Math.max(1, Math.min(Number.isFinite(requestedCount) ? requestedCount : 1, 10));
   const images: GeneratedImage[] = [];

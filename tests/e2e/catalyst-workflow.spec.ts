@@ -862,6 +862,7 @@ test("loads tool hub via / and navigates to mockup generator", async ({ page }) 
   await expect(page.getByText("Mockup Catalyst")).toBeVisible();
   await expect(page.getByText("Logo Catalyst")).toBeVisible();
   await expect(page.getByText("Editable Conversion")).toBeVisible();
+  await expect(page.getByText("Slide Decks")).toHaveCount(0);
   await expect(page.getByText("Asset Catalyst")).toHaveCount(0);
 
   // Click the Mockup Catalyst card
@@ -878,6 +879,15 @@ test("asset route is not exposed as a standalone generator", async ({ page }) =>
   await expect(page).toHaveURL(/\/$/);
   await expect(page.locator(".brand-tag")).toHaveText("studio");
   await expect(page.getByText("Asset Catalyst")).toHaveCount(0);
+  await expect(page.getByLabel("Generation model")).toHaveCount(0);
+});
+
+test("deck route is not exposed while the generator is disabled", async ({ page }) => {
+  await page.goto("/deck");
+
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.locator(".brand-tag")).toHaveText("studio");
+  await expect(page.getByText("Slide Decks")).toHaveCount(0);
   await expect(page.getByLabel("Generation model")).toHaveCount(0);
 });
 

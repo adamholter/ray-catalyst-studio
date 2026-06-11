@@ -8,6 +8,8 @@ npm run test
 npm run build
 ```
 
+`npm test` also runs `scripts/check-source-rules.mjs`, which blocks source code from adding OpenRouter token caps such as `max_tokens` or `max_completion_tokens`.
+
 ## E2E Coverage
 
 The Playwright tests verify:

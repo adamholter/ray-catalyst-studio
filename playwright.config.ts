@@ -8,7 +8,8 @@ export default defineConfig({
     trace: "retain-on-failure"
   },
   webServer: {
-    command: "CATALYST_PROVIDER_MODE=mock CATALYST_API_PORT=5291 CATALYST_WEB_PORT=5290 npm run dev",
+    command:
+      "rm -rf apps/api/.data/e2e && OPENROUTER_API_KEY= CATALYST_PROVIDER_MODE=mock CATALYST_DATA_DIR=.data/e2e CATALYST_API_PORT=5291 CATALYST_WEB_PORT=5290 npm run dev",
     url: "http://127.0.0.1:5290",
     reuseExistingServer: false,
     timeout: 120_000

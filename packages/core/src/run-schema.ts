@@ -11,6 +11,8 @@ export const attachmentSchema = z.object({
   dataUrl: z.string()
 });
 
+export type Attachment = z.infer<typeof attachmentSchema>;
+
 export const createRunRequestSchema = z.object({
   taskId: z.enum(taskIds),
   modelId: z.enum(modelIds),
@@ -31,6 +33,105 @@ export type GeneratedImage = {
   width?: number;
   height?: number;
   contentType?: string;
+  createdAt?: string;
+  parentIndex?: number;
+  operation?: "generated" | "edited" | "enhanced" | "vectorized";
+  modelId?: string;
+  prompt?: string;
+};
+
+export type ExtractedAsset = {
+  id: string;
+  name: string;
+  url: string;
+  type: "image" | "logo" | "icon" | "button" | "background";
+  dimensions?: string;
+  status?: "source-crop" | "planned" | "generated" | "failed";
+  extractionPrompt?: string;
+  cleanup?: {
+    removeText?: boolean;
+    removeOverlays?: boolean;
+    notes?: string[];
+  };
+  backgroundRemoval?: {
+    needed?: boolean;
+    applied?: boolean;
+    reason?: string;
+    modelId?: string;
+  };
+  source?: {
+    imageUrl: string;
+    markedImageUrl?: string;
+    sourceWidth: number;
+    sourceHeight: number;
+    crop: {
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+    };
+  };
+};
+
+export type EditableMockup = {
+  id: string;
+  sourceImageUrl: string;
+  sourceWidth: number;
+  sourceHeight: number;
+  html: string;
+  css: string;
+  assets: ExtractedAsset[];
+  generatedAt: string;
+  layoutModel?: string;
+  comparison?: {
+    status: "not-run" | "ready-for-review" | "reviewed";
+    notes: string[];
+  };
+};
+
+export type BrandConcept = {
+  name: string;
+  tagline: string;
+  personality: string[];
+  audience: string;
+  colors: Record<string, string>;
+  fonts: {
+    display: string;
+    body: string;
+    googleFontsUrl?: string;
+  };
+  icons: Array<{
+    name: string;
+    description: string;
+    use?: string;
+  }>;
+  prompts: {
+    referenceSheet: string;
+    heroBackground: string;
+    lightPattern: string;
+    darkPattern: string;
+  };
+  imageStrategy?: string;
+  imageModels: {
+    referenceSheet: string;
+    refResolution: string;
+    assets: string;
+  };
+};
+
+export type BrandIdentityOutput = {
+  concept: BrandConcept;
+  skillMarkdown: string;
+  showcaseHtml: string;
+  assets: {
+    referenceSheet?: string;
+    heroBackground?: string;
+    lightPattern?: string;
+    darkPattern?: string;
+    icons: Array<{ name: string; url: string; source?: "detected" | "generated" | "fallback" }>;
+  };
+  budget: number;
+  generatedAt: string;
 };
 
 export type RunOutput = {
@@ -40,6 +141,8 @@ export type RunOutput = {
     title: string;
     slides: Array<{ title: string; notes: string; assetPrompt: string }>;
   };
+  mockup?: EditableMockup;
+  brand?: BrandIdentityOutput;
   raw?: unknown;
 };
 

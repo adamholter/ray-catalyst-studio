@@ -7,13 +7,17 @@
     "dev": "tsx watch src/server.ts",
     "start": "node dist/server.js",
     "build": "tsc --outDir dist",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test \"src/**/*.test.ts\""
   },
   "dependencies": {
+    "@openai/agents": "^0.11.6",
     "@ray-catalyst/core": "file:../../packages/core",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "openai": "^6.39.1",
+    "sharp": "^0.34.5"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",

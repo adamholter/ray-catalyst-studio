@@ -13,7 +13,7 @@
     "dev:web": "npm run dev -w apps/web",
     "build": "npm run build -w packages/core && npm run build -w apps/api && npm run build -w apps/web",
     "typecheck": "npm run typecheck -w packages/core && npm run typecheck -w apps/api && npm run typecheck -w apps/web",
-    "test": "npm run test -w packages/core && npm run test:e2e",
+    "test": "node scripts/check-source-rules.mjs && npm run test -w packages/core && npm run test -w apps/api && npm run test:e2e",
     "test:e2e": "playwright test",
     "start": "concurrently -k -n api,web \"npm run start -w apps/api\" \"npm run preview -w apps/web\""
   },

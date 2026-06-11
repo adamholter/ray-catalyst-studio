@@ -2,6 +2,8 @@
 
 This is Ray's composable creative-generation studio. Keep the architecture clean and make changes in the right layer.
 
+Start with `docs/RAY_HANDOFF.md` for the complete Ray-facing handoff, setup, architecture map, and verification checklist.
+
 ## Before Work
 
 1. Check GitHub for remote changes before editing:

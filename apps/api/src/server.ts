@@ -1,7 +1,9 @@
 import cors from "cors";
+import crypto from "node:crypto";
 import express from "express";
 import {
   MODEL_REGISTRY,
+  EDIT_MODEL_REGISTRY,
   TASKS,
   UPSCALER_REGISTRY,
   createRunRequestSchema,
@@ -9,8 +11,9 @@ import {
   modelsForTask
 } from "@ray-catalyst/core";
 import { config } from "./config";
-import { executeRun, executeUpscale } from "./runner";
-import { getRun, listRuns } from "./store/runStore";
+import { enqueueRun, executeImageEdit, executeUpscale, executeVectorize } from "./runner";
+import { deleteRun, getRun, listRuns, saveRun } from "./store/runStore";
+import { convertRunToMockup, editMockupLayout } from "./providers/extractor";
 
 export function createApp() {
   const app = express();
@@ -22,7 +25,8 @@ export function createApp() {
       ok: true,
       providerMode: config.providerMode,
       liveProvidersConfigured: {
-        fal: Boolean(config.falKey)
+        fal: Boolean(config.falKey),
+        openRouter: Boolean(config.openRouterKey)
       }
     });
   });
@@ -31,6 +35,7 @@ export function createApp() {
     res.json({
       tasks: TASKS,
       models: MODEL_REGISTRY,
+      editModels: EDIT_MODEL_REGISTRY,
       upscalers: UPSCALER_REGISTRY,
       defaults: Object.fromEntries(
         TASKS.map((task) => [
@@ -46,7 +51,8 @@ export function createApp() {
 
   app.get("/api/runs", async (_req, res, next) => {
     try {
-      res.json({ runs: await listRuns() });
+      const runs = await listRuns();
+      res.json({ runs });
     } catch (error) {
       next(error);
     }
@@ -65,11 +71,24 @@ export function createApp() {
     }
   });
 
+  app.delete("/api/runs/:id", async (req, res, next) => {
+    try {
+      const deleted = await deleteRun(req.params.id);
+      if (!deleted) {
+        res.status(404).json({ error: "Run not found" });
+        return;
+      }
+      res.json({ deleted: true });
+    } catch (error) {
+      next(error);
+    }
+  });
+
   app.post("/api/runs", async (req, res, next) => {
     try {
       const request = createRunRequestSchema.parse(req.body);
-      const run = await executeRun(request);
-      res.status(run.status === "failed" ? 500 : 201).json({ run });
+      const run = await enqueueRun(request);
+      res.status(202).json({ run });
     } catch (error) {
       next(error);
     }
@@ -79,6 +98,176 @@ export function createApp() {
     try {
       const run = await executeUpscale(req.params.id, req.body.upscalerId, req.body.imageUrl);
       res.status(run.status === "failed" ? 500 : 200).json({ run });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/api/runs/:id/vectorize", async (req, res, next) => {
+    try {
+      const run = await executeVectorize(req.params.id, req.body.imageUrl);
+      res.status(run.status === "failed" ? 500 : 200).json({ run });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/api/runs/:id/edit-image", async (req, res, next) => {
+    try {
+      const run = await executeImageEdit(
+        req.params.id,
+        typeof req.body.imageUrl === "string" ? req.body.imageUrl : undefined,
+        String(req.body.prompt || ""),
+        typeof req.body.modelId === "string" ? req.body.modelId : "gpt-image-2",
+        {
+          quality: typeof req.body.quality === "string" ? req.body.quality : undefined,
+          resolution: typeof req.body.resolution === "string" ? req.body.resolution : undefined
+        }
+      );
+      res.status(run.status === "failed" ? 500 : 200).json({ run });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/api/runs/:id/convert", async (req, res, next) => {
+    try {
+      const run = await getRun(req.params.id);
+      if (!run) {
+        res.status(404).json({ error: "Run not found" });
+        return;
+      }
+      const mockup = await convertRunToMockup(run);
+      run.output = {
+        ...run.output,
+        mockup
+      };
+      await saveRun(run);
+      res.json({ run });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/api/mockups/import", async (req, res, next) => {
+    try {
+      const image = req.body?.image;
+      const dataUrl = typeof image?.dataUrl === "string" ? image.dataUrl : "";
+      if (!dataUrl.startsWith("data:image/")) {
+        res.status(400).json({ error: "Upload an image mockup to convert." });
+        return;
+      }
+      const rawWidth = typeof image.width === "number" ? image.width : undefined;
+      const rawHeight = typeof image.height === "number" ? image.height : undefined;
+      const width = rawWidth && rawWidth >= 128 ? rawWidth : 864;
+      const height = rawHeight && rawHeight >= 128 ? rawHeight : 1296;
+
+      const now = new Date().toISOString();
+      const run = await saveRun({
+        id: crypto.randomUUID(),
+        createdAt: now,
+        updatedAt: now,
+        status: "succeeded",
+        request: {
+          taskId: "mockup",
+          modelId: "gpt-image-2",
+          inputs: {
+            prompt: typeof req.body?.prompt === "string" ? req.body.prompt : "Uploaded raster mockup",
+            aspectRatio: typeof req.body?.aspectRatio === "string" ? req.body.aspectRatio : "2:3",
+            source: "upload"
+          },
+          attachments: []
+        },
+        model: {
+          id: "gpt-image-2",
+          label: "Uploaded Mockup",
+          provider: "mock",
+          endpoint: "local-upload",
+          synthId: { status: "none", note: "Uploaded source image.", applyUpscaleByDefault: false },
+          defaultPostprocessors: []
+        },
+        output: {
+          images: [
+            {
+              url: dataUrl,
+              width,
+              height,
+              contentType: typeof image.mimeType === "string" ? image.mimeType : "image/png",
+              createdAt: now,
+              operation: "generated",
+              modelId: "upload",
+              prompt: typeof req.body?.prompt === "string" ? req.body.prompt : "Uploaded raster mockup"
+            }
+          ]
+        },
+        events: [{ at: now, message: "Uploaded raster mockup" }]
+      });
+
+      const mockup = await convertRunToMockup(run);
+      run.output = {
+        ...run.output,
+        mockup
+      };
+      run.updatedAt = new Date().toISOString();
+      run.events.push({ at: run.updatedAt, message: "Converted upload to editable HTML mockup" });
+      await saveRun(run);
+      res.status(201).json({ run });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/api/runs/:id/edit-mockup", async (req, res, next) => {
+    try {
+      const run = await getRun(req.params.id);
+      if (!run) {
+        res.status(404).json({ error: "Run not found" });
+        return;
+      }
+      if (!run.output?.mockup) {
+        res.status(400).json({ error: "No mockup exists on this run to edit" });
+        return;
+      }
+      const { prompt, html, css } = req.body;
+      const baseMockup = {
+        ...run.output.mockup,
+        html: typeof html === "string" ? html : run.output.mockup.html,
+        css: typeof css === "string" ? css : run.output.mockup.css
+      };
+      const updatedMockup = await editMockupLayout(baseMockup, String(prompt || ""));
+      run.output = {
+        ...run.output,
+        mockup: updatedMockup
+      };
+      await saveRun(run);
+      res.json({ run });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.put("/api/runs/:id/mockup", async (req, res, next) => {
+    try {
+      const run = await getRun(req.params.id);
+      if (!run) {
+        res.status(404).json({ error: "Run not found" });
+        return;
+      }
+      if (!run.output?.mockup) {
+        res.status(400).json({ error: "No mockup exists on this run to save" });
+        return;
+      }
+      run.output = {
+        ...run.output,
+        mockup: {
+          ...run.output.mockup,
+          html: typeof req.body.html === "string" ? req.body.html : run.output.mockup.html,
+          css: typeof req.body.css === "string" ? req.body.css : run.output.mockup.css,
+          generatedAt: new Date().toISOString()
+        }
+      };
+      await saveRun(run);
+      res.json({ run });
     } catch (error) {
       next(error);
     }

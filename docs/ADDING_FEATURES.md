@@ -10,6 +10,13 @@
 6. If the provider is new, add an adapter in `apps/api/src/providers`.
 7. Verify the frontend renders the model without hard-coded UI changes.
 
+## Add Or Change An LLM Provider Call
+
+1. Use an existing shared provider helper first, especially `apps/api/src/providers/openrouter.ts` for OpenRouter.
+2. Keep provider keys backend-only.
+3. Do not set `max_tokens` or `max_completion_tokens` on OpenRouter calls. Full HTML/CSS-in-JSON responses must not be capped.
+4. Add a mock-mode path and tests before any live provider test.
+
 ## Add A New Image Enhancer
 
 1. Add an `UpscalerSpec` to `UPSCALER_REGISTRY`.

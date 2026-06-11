@@ -6,9 +6,24 @@ export type FalQueueResult = {
 };
 
 function apiError(data: unknown, fallback: string): string {
+  const stringify = (value: unknown) => {
+    if (typeof value === "string" && value.trim()) return value;
+    if (value && typeof value === "object") {
+      const nested = value as { message?: unknown; detail?: unknown; error?: unknown };
+      if (typeof nested.message === "string" && nested.message.trim()) return nested.message;
+      if (typeof nested.detail === "string" && nested.detail.trim()) return nested.detail;
+      if (typeof nested.error === "string" && nested.error.trim()) return nested.error;
+      try {
+        return JSON.stringify(value);
+      } catch {
+        return fallback;
+      }
+    }
+    return "";
+  };
   if (data && typeof data === "object") {
-    const item = data as { error?: { message?: string }; detail?: string; message?: string };
-    return item.error?.message || item.detail || item.message || fallback;
+    const item = data as { error?: unknown; detail?: unknown; message?: unknown };
+    return stringify(item.error) || stringify(item.detail) || stringify(item.message) || fallback;
   }
   return fallback;
 }
@@ -92,4 +107,54 @@ export async function callFalQueue(endpoint: string, input: Record<string, unkno
   }
 
   throw new Error(`FAL request timed out after ${Math.round(timeoutMs / 1000)}s`);
+}
+
+export async function callFalDirect(endpoint: string, input: Record<string, unknown>): Promise<unknown> {
+  if (!config.falKey) {
+    throw new Error("FAL_KEY is not configured on the backend");
+  }
+
+  const response = await fetch(`https://fal.run/${endpoint}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Key ${config.falKey}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(input)
+  });
+  const data = await readJson(response);
+  if (!response.ok) {
+    throw new Error(apiError(data, `FAL request failed: ${response.status}`));
+  }
+  return data;
+}
+
+export async function uploadFalFile(buffer: Buffer, name = "upload.png", contentType = "image/png"): Promise<string> {
+  if (!config.falKey) {
+    throw new Error("FAL_KEY is not configured on the backend");
+  }
+
+  const initResponse = await fetch("https://rest.alpha.fal.ai/storage/upload/initiate", {
+    method: "POST",
+    headers: {
+      Authorization: `Key ${config.falKey}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ file_name: name, content_type: contentType })
+  });
+  const init = (await readJson(initResponse)) as { upload_url?: string; file_url?: string };
+  if (!initResponse.ok || !init.upload_url || !init.file_url) {
+    throw new Error(apiError(init, `FAL upload init failed: ${initResponse.status}`));
+  }
+
+  const uploadResponse = await fetch(init.upload_url, {
+    method: "PUT",
+    headers: { "Content-Type": contentType },
+    body: buffer as any
+  });
+  if (!uploadResponse.ok) {
+    throw new Error(`FAL upload failed: ${uploadResponse.status}`);
+  }
+
+  return init.file_url;
 }

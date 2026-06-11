@@ -2,9 +2,16 @@ import type { CreateRunRequest, RunOutput } from "@ray-catalyst/core";
 import type { ModelSpec } from "@ray-catalyst/core";
 
 function svgDataUrl(label: string, subtitle: string, aspectRatio: string) {
-  const portrait = aspectRatio === "2:3";
-  const width = portrait ? 864 : aspectRatio === "16:9" ? 1280 : 1024;
-  const height = portrait ? 1296 : aspectRatio === "16:9" ? 720 : 1024;
+  const parts = aspectRatio.split(":");
+  let w = 2, h = 3;
+  if (parts.length === 2) {
+    w = parseFloat(parts[0]) || 2;
+    h = parseFloat(parts[1]) || 3;
+  }
+  const maxDim = 1024;
+  const scale = maxDim / Math.max(w, h);
+  const width = Math.round(w * scale);
+  const height = Math.round(h * scale);
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
     <rect width="100%" height="100%" fill="#f6f3ed"/>
     <rect x="${width * 0.08}" y="${height * 0.08}" width="${width * 0.84}" height="${height * 0.84}" rx="24" fill="#fff" stroke="#ded7cb"/>
@@ -66,3 +73,31 @@ export async function runMockUpscaler(output: RunOutput, upscalerId: string): Pr
     }
   };
 }
+
+export async function runMockVectorizer(output: RunOutput): Promise<RunOutput> {
+  if (!output.images?.length) return output;
+  return {
+    ...output,
+    images: output.images.map((image) => {
+      const width = image.width || 1024;
+      const height = image.height || 1024;
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+        <rect width="100%" height="100%" fill="#faf9f5"/>
+        <text x="50%" y="45%" dominant-baseline="middle" text-anchor="middle" font-family="Georgia, serif" font-size="32" fill="#111318">✦ Vectorized Mark ✦</text>
+        <text x="50%" y="55%" dominant-baseline="middle" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" fill="#6b7280">Originally: ${image.url.substring(0, 40)}...</text>
+        <circle cx="50%" cy="30%" r="40" fill="#c2d8f5" opacity="0.5"/>
+      </svg>`;
+      return {
+        url: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`,
+        width,
+        height,
+        contentType: "image/svg+xml"
+      };
+    }),
+    raw: {
+      ...(typeof output.raw === "object" && output.raw ? output.raw : {}),
+      postprocess: [{ mode: "mock-vectorize" }]
+    }
+  };
+}
+

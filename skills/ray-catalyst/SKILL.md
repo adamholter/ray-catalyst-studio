@@ -27,6 +27,9 @@ Use this skill whenever changing Catalyst Studio.
 4. **Keep secrets server-side.**
    Provider keys belong in `.env` and backend process env only. Never expose keys in React, static HTML, screenshots, logs, commits, or docs.
 
+5. **Do not cap OpenRouter completions.**
+   Do not set `max_tokens` or `max_completion_tokens` on OpenRouter calls. Catalyst uses long strict-JSON responses with embedded HTML/CSS; caps cause truncation and broken edits.
+
 ## Architecture Rules
 
 - `packages/core/src/registry.ts` is the source of truth for model metadata:
@@ -72,5 +75,10 @@ When Ray asks for a new feature such as slide presentations:
 - Do not add a landing page around the tool.
 - Do not hard-code model-specific forms in the frontend.
 - Do not add a provider by copying an old model call into React.
+- Do not use global aspect-ratio controls. Each generation model declares its own exact supported ratios and whether the backend sends `aspect_ratio` or `image_size`.
+- Do not extract editable mockup assets by cropping screenshot pixels. Send the full mockup to an image-editing model with asset position, exclusions, and clean-output instructions; use crop boxes only as location hints.
+- For image-to-website conversion, use the agent pipeline: Agents SDK + OpenRouter planner, red-box full-mockup overlays per asset, image-model extraction from the marked full mockup, and Pixelcut background removal only for transparent cutouts.
 - Do not use hidden static browser API keys.
+- Do not hand-roll OpenRouter fetch calls; use `apps/api/src/providers/openrouter.ts`.
+- For the `mockup` task, do not reinterpret "mockup" as a browser/device presentation. It means the standalone page or interface design unless the user explicitly asks for device framing.
 - Do not tell Ray to restart the server; do it.

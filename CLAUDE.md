@@ -1,6 +1,6 @@
 # Claude Guide For Ray
 
-Read `skills/ray-catalyst/SKILL.md` before making changes.
+Read `docs/RAY_HANDOFF.md` and `skills/ray-catalyst/SKILL.md` before making changes.
 
 Ray is non-technical. Do not ask him to run commands. If you change the app, you are responsible for:
 
@@ -11,3 +11,5 @@ Ray is non-technical. Do not ask him to run commands. If you change the app, you
 5. Waiting for Ray/Adam to confirm everything works before pushing or syncing.
 
 Keep model details centralized in `packages/core/src/registry.ts`.
+
+Do not set `max_tokens` or `max_completion_tokens` on OpenRouter calls. Use the shared backend OpenRouter helper and let long JSON/HTML/CSS responses complete.

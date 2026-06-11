@@ -42,8 +42,15 @@ Keep live tests to one cheap run at the lowest useful settings unless Adam/Ray e
 
 Before editing, read:
 
+- [docs/RAY_HANDOFF.md](docs/RAY_HANDOFF.md)
+- [docs/RAY_CLAUDE_PROMPT.md](docs/RAY_CLAUDE_PROMPT.md)
 - [skills/ray-catalyst/SKILL.md](skills/ray-catalyst/SKILL.md)
+- [docs/ONBOARDING.md](docs/ONBOARDING.md)
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - [docs/ADDING_FEATURES.md](docs/ADDING_FEATURES.md)
 
 Do not push/sync code to GitHub until the user confirms the app is working.
+
+## Share Handoff
+
+For Ray, start with [docs/RAY_HANDOFF.md](docs/RAY_HANDOFF.md). It explains what the app does, how his Claude agent should run it locally, where the architecture lives, and what to test before calling work done.

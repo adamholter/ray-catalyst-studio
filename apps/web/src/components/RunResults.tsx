@@ -368,11 +368,6 @@ export function RunResults({
         <div className="results-head">
           <div className="gallery-bar-left">
             <h2>Gallery</h2>
-            <div className="gallery-filters">
-              <button className="filter-chip active" type="button">All</button>
-              <button className="filter-chip" type="button">Liked</button>
-              <button className="filter-chip" type="button">Recent</button>
-            </div>
           </div>
           <span>{tiles.length} saved locally</span>
         </div>
@@ -478,7 +473,7 @@ export function RunResults({
                   ↑
                 </button>
               ) : null}
-              {taskId === "logo" && (
+              {taskId === "logo" && !selectedIsVector && (
                 <button className="icon-button labeled" data-label="Vectorize" type="button" onClick={handleVectorize} disabled={working || selected.run.status === "running"} aria-label="Vectorize logo" title="Vectorize logo">
                   ◇
                 </button>

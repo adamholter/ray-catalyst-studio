@@ -50,9 +50,11 @@ Before editing, read:
 - [docs/ONBOARDING.md](docs/ONBOARDING.md)
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - [docs/HOSTED_DEPLOYMENT.md](docs/HOSTED_DEPLOYMENT.md)
+- [docs/COLLABORATION.md](docs/COLLABORATION.md)
 - [docs/ADDING_FEATURES.md](docs/ADDING_FEATURES.md)
 
 Do not push/sync code to GitHub until the user confirms the app is working.
+After confirmation, publish through a feature branch and pull request so the update is available to both Adam and Ray. GitHub `main` is the shared source of truth; see [docs/COLLABORATION.md](docs/COLLABORATION.md).
 
 ## Share Handoff
 

@@ -14,6 +14,7 @@
     "build": "npm run build -w packages/core && npm run build -w apps/api && npm run build -w apps/web",
     "typecheck": "npm run typecheck -w packages/core && npm run typecheck -w apps/api && npm run typecheck -w apps/web",
     "test": "node scripts/check-source-rules.mjs && npm run test -w packages/core && npm run test -w apps/api && npm run test:e2e",
+    "validate": "npm run typecheck && npm run test && npm run build",
     "test:e2e": "playwright test",
     "migrate:runs": "tsx scripts/migrate-run-store.ts",
     "start": "tsx apps/api/src/server.ts",

@@ -1,6 +1,7 @@
 import type { Attachment, CreateRunRequest, EditModelSpec, ModelSpec, RunRecord, TaskSpec, UpscalerSpec } from "@ray-catalyst/core";
 
 export type Capabilities = {
+  providerMode: "mock" | "live";
   tasks: TaskSpec[];
   models: ModelSpec[];
   editModels: EditModelSpec[];

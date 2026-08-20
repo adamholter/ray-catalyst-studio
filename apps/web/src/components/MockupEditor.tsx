@@ -22,6 +22,15 @@ function cleanEditorHtml(html: string) {
   return doc.body.innerHTML;
 }
 
+function responsiveFrameCss(frameWidth: number, frameHeight: number, fixedViewportWidth?: number) {
+  const scale = fixedViewportWidth ? String(Math.min(1, fixedViewportWidth / frameWidth)) : `min(1, calc(100vw / ${frameWidth}))`;
+  return `
+    html, body { width: 100%; overflow-x: hidden; }
+    body { --catalyst-editor-scale: ${scale}; min-height: calc(${frameHeight}px * var(--catalyst-editor-scale)); }
+    body > * { width: ${frameWidth}px !important; max-width: none !important; transform: scale(var(--catalyst-editor-scale)); transform-origin: top left; }
+  `;
+}
+
 export function MockupEditor({ run, onClose, onRunUpdated, initialTab = "preview" }: MockupEditorProps) {
   const mockup = run.output?.mockup;
   const [activeTab, setActiveTab] = useState<"design" | "preview" | "html" | "css">(initialTab);
@@ -41,6 +50,7 @@ export function MockupEditor({ run, onClose, onRunUpdated, initialTab = "preview
   const [selectedElementTag, setSelectedElementTag] = useState<string | null>(null);
   const [selectedElementText, setSelectedElementText] = useState<string | null>(null);
   const [showExportToast, setShowExportToast] = useState(false);
+  const [designDevice, setDesignDevice] = useState<"desktop" | "mobile">("desktop");
   const [chatMessages, setChatMessages] = useState<Array<{ role: "assistant" | "user"; text: string }>>([
     { role: "assistant", text: "Ready for layout edits." }
   ]);
@@ -48,7 +58,41 @@ export function MockupEditor({ run, onClose, onRunUpdated, initialTab = "preview
   const grapesContainerRef = useRef<HTMLDivElement | null>(null);
   const grapesEditorRef = useRef<Editor | null>(null);
   const grapesSyncRef = useRef<string>("");
+  const localUndoRef = useRef<Array<{ html: string; css: string; selectedIndex: number | null }>>([]);
+  const localRedoRef = useRef<Array<{ html: string; css: string; selectedIndex: number | null }>>([]);
   const originalImage = run.output?.images?.[0]?.url || "";
+
+  function commitLocalHtml(nextHtml: string, nextSelectedIndex: number | null = selectedIndex) {
+    if (nextHtml === htmlContent && nextSelectedIndex === selectedIndex) return;
+    localUndoRef.current.push({ html: htmlContent, css: cssContent, selectedIndex });
+    localRedoRef.current = [];
+    setHtmlContent(nextHtml);
+    setSelectedIndex(nextSelectedIndex);
+  }
+
+  function undoLocalChange() {
+    const previous = localUndoRef.current.pop();
+    if (!previous) {
+      grapesEditorRef.current?.runCommand("core:undo");
+      return;
+    }
+    localRedoRef.current.push({ html: htmlContent, css: cssContent, selectedIndex });
+    setHtmlContent(previous.html);
+    setCssContent(previous.css);
+    setSelectedIndex(previous.selectedIndex);
+  }
+
+  function redoLocalChange() {
+    const next = localRedoRef.current.pop();
+    if (!next) {
+      grapesEditorRef.current?.runCommand("core:redo");
+      return;
+    }
+    localUndoRef.current.push({ html: htmlContent, css: cssContent, selectedIndex });
+    setHtmlContent(next.html);
+    setCssContent(next.css);
+    setSelectedIndex(next.selectedIndex);
+  }
 
   // Initialize values when run changes
   useEffect(() => {
@@ -109,7 +153,7 @@ export function MockupEditor({ run, onClose, onRunUpdated, initialTab = "preview
     const newVal = isPadding ? Math.max(0, currentVal + amount) : currentVal + amount;
     
     target.style.setProperty(property, `${newVal}px`);
-    setHtmlContent(cleanEditorHtml(doc.body.innerHTML));
+    commitLocalHtml(cleanEditorHtml(doc.body.innerHTML));
   }
 
   // Spacing property value getter helper
@@ -134,7 +178,7 @@ export function MockupEditor({ run, onClose, onRunUpdated, initialTab = "preview
     for (const [key, value] of Object.entries(styles)) {
       target.style.setProperty(key, value);
     }
-    setHtmlContent(cleanEditorHtml(doc.body.innerHTML));
+    commitLocalHtml(cleanEditorHtml(doc.body.innerHTML));
   }
 
   // Direct element HTML update helper
@@ -153,7 +197,7 @@ export function MockupEditor({ run, onClose, onRunUpdated, initialTab = "preview
 
       // Swap elements in tree
       target.parentElement.replaceChild(newEl.cloneNode(true), target);
-      setHtmlContent(cleanEditorHtml(doc.body.innerHTML));
+      commitLocalHtml(cleanEditorHtml(doc.body.innerHTML));
     } catch (err) {
       console.error("Failed to parse element HTML", err);
     }
@@ -168,7 +212,7 @@ export function MockupEditor({ run, onClose, onRunUpdated, initialTab = "preview
     const target = allElements[selectedIndex] as HTMLElement | null;
     if (!target) return;
     target.textContent = text;
-    setHtmlContent(cleanEditorHtml(doc.body.innerHTML));
+    commitLocalHtml(cleanEditorHtml(doc.body.innerHTML));
     setSelectedElementText(text);
   }
 
@@ -206,8 +250,7 @@ export function MockupEditor({ run, onClose, onRunUpdated, initialTab = "preview
       }
     });
 
-    setHtmlContent(cleanEditorHtml(docNew.body.innerHTML));
-    setSelectedIndex(newIdx);
+    commitLocalHtml(cleanEditorHtml(docNew.body.innerHTML), newIdx);
   }
 
   // Duplicate element
@@ -235,8 +278,7 @@ export function MockupEditor({ run, onClose, onRunUpdated, initialTab = "preview
       }
     });
 
-    setHtmlContent(cleanEditorHtml(docNew.body.innerHTML));
-    setSelectedIndex(newIdx);
+    commitLocalHtml(cleanEditorHtml(docNew.body.innerHTML), newIdx);
   }
 
   // Delete element
@@ -250,7 +292,7 @@ export function MockupEditor({ run, onClose, onRunUpdated, initialTab = "preview
     
     target.remove();
     
-    setHtmlContent(cleanEditorHtml(doc.body.innerHTML));
+    commitLocalHtml(cleanEditorHtml(doc.body.innerHTML), null);
     setSelectedIndex(null);
     setSelectedElement(null);
     setSelectedElementTag(null);
@@ -288,13 +330,17 @@ export function MockupEditor({ run, onClose, onRunUpdated, initialTab = "preview
       background: #faf9f5;
     }
     .catalyst-container {
-      width: 100%;
-      max-width: ${frameWidth}px;
+      --catalyst-export-scale: min(1, calc(100vw / ${frameWidth}));
+      width: ${frameWidth}px;
+      max-width: none;
       margin: 0 auto;
       min-height: ${frameHeight}px;
       background: #ffffff;
       position: relative;
+      transform: scale(var(--catalyst-export-scale));
+      transform-origin: top center;
     }
+    body { overflow-x: hidden; min-height: calc(${frameHeight}px * min(1, calc(100vw / ${frameWidth}))); }
     ${cssContent}
   </style>
 </head>
@@ -373,15 +419,18 @@ export function MockupEditor({ run, onClose, onRunUpdated, initialTab = "preview
     let observer: MutationObserver | null = null;
     
     const loadIntoEditor = () => {
+      const editorCss = `${cssContent || ""}\n${responsiveFrameCss(mockup.sourceWidth || 1024, mockup.sourceHeight || 1536, designDevice === "mobile" ? 390 : undefined)}`;
+      const syncKey = `${mockup.id}:${htmlContent.length}:${editorCss.length}`;
+      if (grapesSyncRef.current === syncKey) return;
+      editor.setComponents(htmlContent || "<main></main>");
+      editor.setStyle(editorCss);
       const frameDocument = grapesFrame()?.contentDocument;
       if (!frameDocument) return;
-      const syncKey = `${mockup.id}:${htmlContent.length}:${cssContent.length}`;
-      if (grapesSyncRef.current === syncKey) return;
 
       frameDocument.head.querySelector("[data-catalyst-css]")?.remove();
       const style = frameDocument.createElement("style");
       style.setAttribute("data-catalyst-css", "true");
-      style.textContent = cssContent || "";
+      style.textContent = editorCss;
       frameDocument.head.appendChild(style);
       frameDocument.body.innerHTML = htmlContent || "<main></main>";
       frameDocument.body.setAttribute("data-catalyst-editable-canvas", "true");
@@ -526,11 +575,12 @@ export function MockupEditor({ run, onClose, onRunUpdated, initialTab = "preview
       timers.forEach((timer) => window.clearTimeout(timer));
       if (observer) (observer as MutationObserver).disconnect();
       const frameDocument = grapesFrame()?.contentDocument;
-      if (frameDocument?.body?.innerHTML) {
-        setHtmlContent(cleanEditorHtml(frameDocument.body.innerHTML));
+      const frameHtml = cleanEditorHtml(frameDocument?.body?.innerHTML || "");
+      if (frameHtml && frameHtml !== "<main></main>" && frameHtml !== "<main></main>\n") {
+        setHtmlContent(frameHtml);
       }
     };
-  }, [activeTab, mockup?.id, mockup?.generatedAt]);
+  }, [activeTab, designDevice, mockup?.id, mockup?.generatedAt]);
 
   useEffect(() => {
     return () => {
@@ -810,6 +860,8 @@ export function MockupEditor({ run, onClose, onRunUpdated, initialTab = "preview
         </div>
 
         <div className="editor-actions-right">
+          <button className="ghost-button" type="button" onClick={undoLocalChange} aria-label="Undo edit" title="Undo">↶</button>
+          <button className="ghost-button" type="button" onClick={redoLocalChange} aria-label="Redo edit" title="Redo">↷</button>
           <button className="ghost-button export-html-btn" type="button" onClick={handleExportHTML} title="Export packed production HTML file">
             Export HTML ⤓
           </button>
@@ -1103,10 +1155,8 @@ export function MockupEditor({ run, onClose, onRunUpdated, initialTab = "preview
           {activeTab === "design" ? (
             <div className="grapes-editor-shell">
               <div className="grapes-editor-toolbar">
-                <button type="button" onClick={() => grapesEditorRef.current?.runCommand("core:undo")} title="Undo">↶</button>
-                <button type="button" onClick={() => grapesEditorRef.current?.runCommand("core:redo")} title="Redo">↷</button>
-                <button type="button" onClick={() => grapesEditorRef.current?.setDevice("Desktop")}>Desktop</button>
-                <button type="button" onClick={() => grapesEditorRef.current?.setDevice("Mobile")}>Mobile</button>
+                <button type="button" onClick={() => { setDesignDevice("desktop"); grapesEditorRef.current?.setDevice("Desktop"); }}>Desktop</button>
+                <button type="button" onClick={() => { setDesignDevice("mobile"); grapesEditorRef.current?.setDevice("Mobile"); }}>Mobile</button>
               </div>
               <div className="grapes-editor-canvas" ref={grapesContainerRef} />
             </div>

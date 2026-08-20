@@ -66,6 +66,7 @@ export function createApp() {
 
   app.get("/api/capabilities", (_req, res) => {
     res.json({
+      providerMode: config.providerMode,
       tasks: TASKS,
       models: MODEL_REGISTRY,
       editModels: EDIT_MODEL_REGISTRY,

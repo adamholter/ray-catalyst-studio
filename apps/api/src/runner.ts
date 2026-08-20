@@ -22,9 +22,14 @@ function now() {
   return new Date().toISOString();
 }
 
-function errorMessage(error: unknown, fallback = "The request failed") {
-  if (error instanceof Error && error.message.trim()) return error.message;
-  if (typeof error === "string" && error.trim()) return error;
+export function errorMessage(error: unknown, fallback = "The request failed"): string {
+  if (error instanceof Error) {
+    const message = error.message.trim();
+    if (message && message !== "[object Object]") return message;
+    const cause = (error as Error & { cause?: unknown }).cause;
+    return cause ? errorMessage(cause, fallback) : fallback;
+  }
+  if (typeof error === "string" && error.trim()) return error.trim() === "[object Object]" ? fallback : error;
   if (error && typeof error === "object") {
     const item = error as { message?: unknown; error?: unknown; detail?: unknown };
     for (const value of [item.message, item.error, item.detail]) {
@@ -36,7 +41,8 @@ function errorMessage(error: unknown, fallback = "The request failed") {
       }
     }
     try {
-      return JSON.stringify(error);
+      const serialized = JSON.stringify(error);
+      return serialized && serialized !== "{}" ? serialized : fallback;
     } catch {
       return fallback;
     }
@@ -642,7 +648,8 @@ export async function executeUpscale(runId: string, upscalerId?: string, imageUr
     const errMsg = errorMessage(error, "Enhancement failed");
     if (run.status === "failed") run.error = errMsg;
     run.events.push(event(`Enhancement failed: ${errMsg}`));
-    return await saveRun(run);
+    await saveRun(run);
+    throw new Error(errMsg);
   }
 }
 
@@ -710,7 +717,8 @@ export async function executeVectorize(runId: string, imageUrl?: string): Promis
     const errMsg = errorMessage(error, "Vectorization failed");
     if (run.status === "failed") run.error = errMsg;
     run.events.push(event(`Vectorization failed: ${errMsg}`));
-    return await saveRun(run);
+    await saveRun(run);
+    throw new Error(errMsg);
   }
 }
 
@@ -868,6 +876,7 @@ export async function executeImageEdit(
     const errMsg = errorMessage(error, "Image edit failed");
     if (run.status === "failed") run.error = errMsg;
     run.events.push(event(`Image edit failed: ${errMsg}`));
-    return await saveRun(run);
+    await saveRun(run);
+    throw new Error(errMsg);
   }
 }

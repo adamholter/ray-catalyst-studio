@@ -299,6 +299,13 @@ export async function runBrandIdentityPipeline(request: CreateRunRequest, update
   const concept = normalizeConcept(await createConcept(description, budget, referenceUrls, update));
   await update(`Concept: ${concept.name} - ${concept.tagline}`);
 
+  const leanBudget = config.providerMode === "live" && budget < 0.5;
+  if (leanBudget) {
+    concept.imageModels.referenceSheet = "nano-banana-2";
+    concept.imageModels.refResolution = "1K";
+    await update(`Lean budget mode: one reference-sheet generation within the $${budget.toFixed(2)} target`);
+  }
+
   await update("Generating reference sheet");
   const referenceSheet = await generateImage(
     concept.imageModels.referenceSheet,
@@ -309,21 +316,33 @@ export async function runBrandIdentityPipeline(request: CreateRunRequest, update
     update
   );
 
-  await update("Generating icons and supporting assets");
-  const iconJobs = concept.icons.slice(0, 6).map((icon) =>
-    processIcon(referenceSheet, icon, concept.imageModels.referenceSheet, async (message) => update(`${icon.name}: ${message}`))
-  );
-  const assetJobs = {
-    heroBackground: generateImage(concept.imageModels.assets, concept.prompts.heroBackground, [], "1K", "16:9", update),
-    lightPattern: generateImage(concept.imageModels.assets, concept.prompts.lightPattern, [], "1K", "1:1", update),
-    darkPattern: generateImage(concept.imageModels.assets, concept.prompts.darkPattern, [], "1K", "1:1", update)
-  };
-  const [icons, heroBackground, lightPattern, darkPattern] = await Promise.all([
-    Promise.all(iconJobs),
-    assetJobs.heroBackground,
-    assetJobs.lightPattern,
-    assetJobs.darkPattern
-  ]);
+  let icons: BrandIdentityOutput["assets"]["icons"];
+  let heroBackground: string;
+  let lightPattern: string;
+  let darkPattern: string;
+  if (leanBudget) {
+    await update("Using lightweight derived assets to honor the selected budget");
+    icons = concept.icons.slice(0, 6).map((icon) => ({ name: icon.name, url: svgDataUri(icon.name, concept.colors.primary, concept.colors.neutralDark), source: "fallback" as const }));
+    heroBackground = referenceSheet;
+    lightPattern = svgDataUri(`${concept.name} light pattern`, concept.colors.accent, concept.colors.neutralDark);
+    darkPattern = svgDataUri(`${concept.name} dark pattern`, concept.colors.secondary, concept.colors.neutralDark);
+  } else {
+    await update("Generating icons and supporting assets");
+    const iconJobs = concept.icons.slice(0, 6).map((icon) =>
+      processIcon(referenceSheet, icon, concept.imageModels.referenceSheet, async (message) => update(`${icon.name}: ${message}`))
+    );
+    const assetJobs = {
+      heroBackground: generateImage(concept.imageModels.assets, concept.prompts.heroBackground, [], "1K", "16:9", update),
+      lightPattern: generateImage(concept.imageModels.assets, concept.prompts.lightPattern, [], "1K", "1:1", update),
+      darkPattern: generateImage(concept.imageModels.assets, concept.prompts.darkPattern, [], "1K", "1:1", update)
+    };
+    [icons, heroBackground, lightPattern, darkPattern] = await Promise.all([
+      Promise.all(iconJobs),
+      assetJobs.heroBackground,
+      assetJobs.lightPattern,
+      assetJobs.darkPattern
+    ]);
+  }
 
   await update("Assembling skill document and showcase");
   const skillMarkdown =

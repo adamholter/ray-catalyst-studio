@@ -15,6 +15,7 @@ Start with `docs/RAY_HANDOFF.md` for the complete Ray-facing handoff, setup, arc
 2. If remote changes exist, pull/rebase them before starting unless doing so would overwrite local user work.
 3. Never commit secrets, real client data, generated API keys, or provider tokens.
 4. Use a short-lived feature branch for code changes. Do not push directly to `main`.
+5. Read `docs/COLLABORATION.md`. GitHub is the shared source of truth for Adam, Ray, and their agents.
 
 ## During Work
 
@@ -39,6 +40,15 @@ Start with `docs/RAY_HANDOFF.md` for the complete Ray-facing handoff, setup, arc
 3. Open the app and test the real user path.
 4. Report what changed, what was tested, and what remains.
 5. Do not push/sync to GitHub until the user explicitly confirms the app is working.
+6. After confirmation, do not leave the update only on this computer: commit it, push the feature branch, open a pull request, and merge it after CI passes. This is how Adam and Ray receive each other's updates.
+
+## Publishing Updates
+
+- `main` is protected and deployable. Never force-push it.
+- Each change uses a short-lived branch and pull request.
+- Before opening the pull request, rebase the branch on `origin/main` and run `npm run validate`.
+- After the pull request merges, update the local checkout with `git switch main && git pull --ff-only`.
+- Do not use background auto-pull or auto-push. Explicit Git operations prevent uncommitted work from being overwritten.
 
 ## Hosted Mode
 

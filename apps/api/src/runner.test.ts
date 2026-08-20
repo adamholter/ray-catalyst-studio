@@ -1,7 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { getModel, type CreateRunRequest } from "@ray-catalyst/core";
-import { buildPromptEnhancementContext, resolveProviderAspectInput } from "./runner";
+import { buildPromptEnhancementContext, errorMessage, resolveProviderAspectInput } from "./runner";
+
+test("normalizes opaque provider errors into actionable fallback text", () => {
+  assert.equal(errorMessage(new Error("[object Object]"), "Enhancement failed"), "Enhancement failed");
+  assert.equal(errorMessage("[object Object]", "Enhancement failed"), "Enhancement failed");
+  assert.equal(errorMessage(new Error("[object Object]", { cause: { message: "Provider quota exhausted" } })), "Provider quota exhausted");
+  assert.equal(errorMessage({ error: { detail: "Unsupported image format" } }), "Unsupported image format");
+});
 
 test("maps aspect_ratio models to their native ratio input", () => {
   assert.deepEqual(resolveProviderAspectInput(getModel("grok-imagine"), "20:9"), {

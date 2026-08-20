@@ -434,24 +434,6 @@ button { cursor: pointer; }
 .cost-line span { color: var(--muted); }
 .cost-line strong { font-size: 1rem; }
 
-.advanced { margin-top: 18px; }
-.advanced summary {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  gap: 12px;
-  align-items: center;
-  cursor: pointer;
-  color: var(--muted);
-  font-size: 0.86rem;
-}
-.advanced summary span:first-child { color: var(--ink); font-weight: 600; }
-.advanced-body {
-  margin-top: 14px;
-  padding: 14px;
-  border: 1px solid var(--line);
-  border-radius: var(--r-md);
-  background: var(--cream);
-}
 .system-note {
   display: grid;
   gap: 4px;
@@ -1474,9 +1456,11 @@ button { cursor: pointer; }
 }
 
 @media (max-width: 680px) {
-  .topbar { padding: 12px 16px; gap: 8px; }
-  .topbar-right { gap: 8px; }
-  .topbar-chip { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .topbar { padding: 12px 16px; gap: 8px; flex-wrap: wrap; align-items: flex-start; }
+  .topbar-left { min-width: 0; }
+  .topbar-right { width: 100%; gap: 8px; flex-wrap: wrap; justify-content: flex-start; }
+  .topbar-sep { display: none; }
+  .topbar-chip { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .stage { padding: 24px 16px 80px; }
   .composer { padding: 20px; }
   .composer-rail,

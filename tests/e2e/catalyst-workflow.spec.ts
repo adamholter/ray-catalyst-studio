@@ -55,8 +55,6 @@ test("creates a mockup run from metadata and preserves portrait outputs", async 
 
 test("main mockup surface does not expose unfinished task switches", async ({ page }) => {
   await page.goto("/mockup");
-
-  await page.locator("summary").click();
   await expect(page.getByRole("button", { name: "Slide deck" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Logo / mark" })).toHaveCount(0);
   await expect(page.getByText("registry")).toHaveCount(0);
@@ -294,6 +292,14 @@ test("editable mockup page converts an uploaded raster image into the canvas edi
   await page.mouse.move(heroBox!.x + 48, heroBox!.y + 40);
   await page.mouse.up();
   await editableFrame.locator("h1").first().click();
+  await page.getByRole("button", { name: "Dup", exact: true }).click();
+  await expect(editableFrame.locator("h1")).toHaveCount(2);
+  await page.getByRole("button", { name: "Undo edit" }).click();
+  await expect(editableFrame.locator("h1")).toHaveCount(1);
+  await page.getByRole("button", { name: "Redo edit" }).click();
+  await expect(editableFrame.locator("h1")).toHaveCount(2);
+  await page.getByRole("button", { name: "Undo edit" }).click();
+  await expect(editableFrame.locator("h1")).toHaveCount(1);
   await page.getByRole("button", { name: "Center", exact: true }).click();
   await editableFrame.locator("[contenteditable]").first().evaluate((element) => {
     element.textContent = "Editable landing page";
@@ -724,8 +730,37 @@ test("logo result actions can vectorize a raster logo", async ({ page }) => {
   await page.locator(".result-image-button").first().click();
   await expect(page.getByRole("button", { name: "Vectorize logo", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Vectorize logo", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Vectorize logo", exact: true })).toBeVisible({ timeout: 5000 });
+  await expect(page.getByRole("button", { name: "Vectorize logo", exact: true })).toHaveCount(0);
   expect(vectorizePayload).toEqual({ imageUrl: "https://v3.fal.media/files/example/logo.png" });
+});
+
+test("failed enhancement shows an actionable error and preserves the raster result", async ({ page }) => {
+  const logoRun = {
+    id: "logo-enhance-failure-1",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    status: "succeeded",
+    request: { taskId: "logo", modelId: "grok-imagine", inputs: { prompt: "Raster turtle logo", aspectRatio: "1:1" }, attachments: [] },
+    model: { id: "grok-imagine", label: "Grok Imagine", provider: "fal", endpoint: "xai/grok-imagine-image" },
+    output: { images: [{ url: "https://v3.fal.media/files/example/turtle.png", width: 1024, height: 1024 }] },
+    events: []
+  };
+  await page.route("**/api/runs", async (route) => {
+    if (route.request().method() === "GET") {
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ runs: [logoRun] }) });
+      return;
+    }
+    await route.continue();
+  });
+  await page.route("**/api/runs/logo-enhance-failure-1/upscale", async (route) => {
+    await route.fulfill({ status: 400, contentType: "application/json", body: JSON.stringify({ error: "Enhancement failed: unsupported image format" }) });
+  });
+
+  await page.goto("/logo");
+  await page.getByRole("button", { name: "Output from Grok Imagine Actions" }).click();
+  await page.getByRole("button", { name: "Enhance", exact: true }).click();
+  await expect(page.getByText("Enhancement failed: unsupported image format")).toBeVisible();
+  await expect(page.getByRole("img", { name: "Selected generated result" })).toBeVisible();
 });
 
 test("logo result modal shows prompt, vector outline, and edit chat payload", async ({ page }) => {
@@ -993,4 +1028,41 @@ test("brand catalyst submits through the Catalyst run API and renders the persis
   await expect(page.getByText("# LUMA Brand System")).toBeVisible();
   await page.getByRole("button", { name: "Icons" }).click();
   await expect(page.getByText("beam")).toBeVisible();
+});
+
+test("does not expose inert gallery filters or empty advanced controls", async ({ page }) => {
+  await page.goto("/mockup");
+  await expect(page.getByRole("button", { name: "Liked" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Recent" })).toHaveCount(0);
+  await expect(page.getByText("Advanced controls", { exact: true })).toHaveCount(0);
+});
+
+test("requires a prompt before starting image generation", async ({ page }) => {
+  await page.goto("/mockup");
+  const generate = page.getByRole("button", { name: "Generate mockups" });
+  await expect(generate).toBeDisabled();
+  await page.getByLabel("Prompt").fill("A calm editorial portfolio homepage");
+  await expect(generate).toBeEnabled();
+});
+
+test("mock-mode generation does not inflate paid session spend", async ({ page }) => {
+  await page.goto("/logo");
+  await page.getByLabel("Prompt").fill("A simple compass logo");
+  await page.getByRole("button", { name: "Generate logos" }).click();
+  await expect(page.locator(".run-card.succeeded").first()).toBeVisible({ timeout: 15000 });
+  await expect(page.locator(".session-cost")).toHaveText("session est. $0.00");
+});
+
+test("mobile top bars keep all navigation inside the viewport", async ({ page, isMobile }) => {
+  test.skip(!isMobile, "mobile regression");
+  for (const route of ["/", "/mockup", "/brand", "/editable"]) {
+    await page.goto(route);
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(overflow).toBeLessThanOrEqual(1);
+    const topbar = page.locator(".topbar");
+    await expect(topbar).toBeVisible();
+    const box = await topbar.boundingBox();
+    expect(box?.x || 0).toBeGreaterThanOrEqual(0);
+    expect((box?.x || 0) + (box?.width || 0)).toBeLessThanOrEqual(391);
+  }
 });

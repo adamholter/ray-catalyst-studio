@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Attachment, BrandIdentityOutput, RunRecord } from "@ray-catalyst/core";
-import { createRun, fetchRuns } from "../lib/api";
+import { createRun, fetchCapabilities, fetchRuns } from "../lib/api";
 import { fileToAttachment } from "../lib/files";
 
 type BrandCatalystPageProps = {
@@ -42,6 +42,10 @@ function isBrandRun(run: RunRecord) {
   return run.request.taskId === "brand" || run.request.modelId === brandModelId;
 }
 
+function recordedRunCost(run: RunRecord) {
+  return (run.modelInvocations || []).reduce((total, invocation) => total + (invocation.estimatedCostUsd || 0), 0);
+}
+
 export function BrandCatalystPage({ onNavigate }: BrandCatalystPageProps) {
   const [prompt, setPrompt] = useState("");
   const [budget, setBudget] = useState(1.5);
@@ -52,6 +56,7 @@ export function BrandCatalystPage({ onNavigate }: BrandCatalystPageProps) {
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState<"overview" | "showcase" | "icons" | "assets" | "skill">("overview");
   const [sessionCost, setSessionCost] = useState(() => Number(sessionStorage.getItem("catalyst-session-cost") || "0"));
+  const [providerMode, setProviderMode] = useState<"mock" | "live">("mock");
 
   const brandRuns = useMemo(() => runs.filter(isBrandRun), [runs]);
   const activeRun = useMemo(() => {
@@ -62,9 +67,10 @@ export function BrandCatalystPage({ onNavigate }: BrandCatalystPageProps) {
 
   useEffect(() => {
     let cancelled = false;
-    fetchRuns()
-      .then((data) => {
+    Promise.all([fetchRuns(), fetchCapabilities()])
+      .then(([data, capabilities]) => {
         if (cancelled) return;
+        setProviderMode(capabilities.providerMode);
         setRuns(data.runs);
         const firstBrand = data.runs.find(isBrandRun);
         if (firstBrand) setActiveRunId(firstBrand.id);
@@ -135,11 +141,14 @@ export function BrandCatalystPage({ onNavigate }: BrandCatalystPageProps) {
       });
       setActiveRunId(result.run.id);
       setRuns((current) => [result.run, ...current.filter((run) => run.id !== tempRun.id && run.id !== result.run.id)]);
-      setSessionCost((current) => {
-        const next = Number((current + budget).toFixed(4));
-        sessionStorage.setItem("catalyst-session-cost", String(next));
-        return next;
-      });
+      const runCost = recordedRunCost(result.run) || (providerMode === "live" ? budget : 0);
+      if (runCost > 0) {
+        setSessionCost((current) => {
+          const next = Number((current + runCost).toFixed(4));
+          sessionStorage.setItem("catalyst-session-cost", String(next));
+          return next;
+        });
+      }
     } catch (err) {
       const message = displayError(err);
       setError(message);
@@ -175,7 +184,7 @@ export function BrandCatalystPage({ onNavigate }: BrandCatalystPageProps) {
           <span className="brand-tag">brands</span>
         </div>
         <div className="topbar-right">
-          <span className="session-cost">session ${sessionCost.toFixed(2)}</span>
+          <span className="session-cost">session est. ${sessionCost.toFixed(2)}</span>
           <button className="topbar-link" type="button" onClick={() => navigate("")}>
             Tools Hub
           </button>

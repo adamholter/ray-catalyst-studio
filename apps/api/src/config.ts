@@ -48,6 +48,7 @@ function readKeychainSecret(service: string) {
 const allowMockOpenRouter = process.env.CATALYST_ALLOW_OPENROUTER_IN_MOCK === "1";
 const shouldReadLiveSecrets = selectedProviderMode === "live" || allowMockOpenRouter;
 const keychainOpenRouterKey = shouldReadLiveSecrets ? readKeychainSecret("ironwood_openrouter_api_key") : "";
+const keychainFalKey = shouldReadLiveSecrets ? readKeychainSecret("ironwood_fal_api_key") : "";
 
 export const config = {
   port: Number(process.env.CATALYST_API_PORT || 5191),
@@ -64,7 +65,7 @@ export const config = {
     secretAccessKey: process.env.R2_SECRET_ACCESS_KEY || "",
     publicBaseUrl: (process.env.R2_PUBLIC_BASE_URL || "").replace(/\/+$/, "")
   },
-  falKey: process.env.FAL_KEY || "",
+  falKey: process.env.FAL_KEY || keychainFalKey || "",
   falObjectLifecyclePreference: process.env.FAL_OBJECT_LIFECYCLE_PREFERENCE || "",
   llmProvider: llmProvider(),
   openRouterKey: shouldReadLiveSecrets ? keychainOpenRouterKey || process.env.OPENROUTER_API_KEY || "" : "",

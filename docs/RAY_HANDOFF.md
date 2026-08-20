@@ -187,4 +187,14 @@ After changes are finished:
 3. Ask Adam/Ray to confirm the app works.
 4. Push/sync to GitHub only after that explicit confirmation.
 
+After confirmation, the agent must finish the publication step rather than leaving the work only on one computer:
+
+1. Rebase the feature branch on the latest `origin/main`.
+2. Run `npm run validate`.
+3. Commit and push the feature branch.
+4. Open a pull request and merge it after CI passes.
+5. Update the local `main` branch with `git pull --ff-only`.
+
+GitHub `main` is the shared source of truth for Adam and Ray. Read [COLLABORATION.md](COLLABORATION.md) for the complete two-way workflow. Do not run automatic background pulls or pushes that can overwrite uncommitted work.
+
 Do not send emails, invite collaborators, deploy, or spend live API credits unless the user explicitly asks for that action.

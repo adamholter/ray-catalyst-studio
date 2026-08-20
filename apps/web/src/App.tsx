@@ -109,6 +109,10 @@ function estimateCost(modelId: string, inputs: Record<string, unknown>) {
   return (prices[modelId] || 0) * count;
 }
 
+function recordedRunCost(run: RunRecord) {
+  return (run.modelInvocations || []).reduce((total, invocation) => total + (invocation.estimatedCostUsd || 0), 0);
+}
+
 const taskIds: TaskId[] = ["mockup", "logo"];
 
 function getInitialTask(currentPath?: string): TaskId {
@@ -329,9 +333,11 @@ export function App() {
         inputs,
         attachments
       });
-      if (typeof cost === "number") {
+      const recordedCost = recordedRunCost(result.run);
+      const runCost = recordedCost || (capabilities?.providerMode === "live" ? cost : 0);
+      if (runCost > 0) {
         setSessionCost((current) => {
-          const next = Number((current + cost).toFixed(4));
+          const next = Number((current + runCost).toFixed(4));
           sessionStorage.setItem("catalyst-session-cost", String(next));
           return next;
         });
@@ -378,7 +384,7 @@ export function App() {
             <span className="brand-tag">studio</span>
           </div>
           <div className="topbar-right">
-            <span className="session-cost">session ${sessionCost.toFixed(2)}</span>
+            <span className="session-cost">session est. ${sessionCost.toFixed(2)}</span>
             <button className="topbar-link" type="button" onClick={() => setDebugOpen((open) => !open)}>Debug</button>
           </div>
         </header>
@@ -460,7 +466,7 @@ export function App() {
           <span className="brand-tag">{taskTag}</span>
         </div>
         <div className="topbar-right">
-          <span className="session-cost">session ${sessionCost.toFixed(2)}</span>
+          <span className="session-cost">session est. ${sessionCost.toFixed(2)}</span>
           <button className="topbar-chip" type="button">{modelDetailLabel(selectedModel, inputs)}</button>
           <button className="topbar-link" type="button" onClick={() => navigate("")}>Tools Hub</button>
           <span className="topbar-sep">·</span>
@@ -659,7 +665,7 @@ export function App() {
 
             <div className="composer-action">
               <div className="action-left">
-                <button className="generate-button" type="button" onClick={submit} disabled={busy}>
+                <button className="generate-button" type="button" onClick={submit} disabled={busy || !String(inputs.prompt || "").trim()}>
                   {busy ? "Generating..." : `Generate ${taskTag}`}
                 </button>
                 {busy && (
@@ -673,15 +679,6 @@ export function App() {
                 <span className="cost-line"><span>est.</span><strong>{cost === null ? "varies" : `$${cost.toFixed(2)}`}</strong></span>
               </div>
             </div>
-
-            <details className="advanced">
-              <summary>
-                <span>Advanced controls</span>
-                <span>references, aspect, count, style</span>
-                <span>›</span>
-              </summary>
-              <div className="advanced-body" />
-            </details>
 
             {error ? <div className="error-box">{error}</div> : null}
           </section>

@@ -33,8 +33,8 @@ export function createApp() {
       liveProvidersConfigured: {
         fal: Boolean(config.falKey),
         openRouter: Boolean(config.openRouterKey) || (config.llmProvider === "fal-openrouter" && Boolean(config.falKey)),
-        postgres: config.storeDriver !== "postgres" || Boolean(config.databaseUrl),
-        r2: config.assetStorageDriver !== "r2" || Boolean(config.r2.bucket && config.r2.endpoint)
+        postgres: config.storeDriver === "postgres" && Boolean(config.databaseUrl),
+        r2: config.assetStorageDriver === "r2" && Boolean(config.r2.bucket && config.r2.endpoint && config.r2.accessKeyId && config.r2.secretAccessKey)
       }
     });
   });
@@ -333,8 +333,8 @@ export function createApp() {
 let activeServer: ReturnType<ReturnType<typeof createApp>["listen"]> | undefined;
 
 if (process.env.NODE_ENV !== "test" || process.env.CATALYST_API_PORT) {
-  activeServer = createApp().listen(config.port, () => {
-    console.log(`Catalyst API listening on http://127.0.0.1:${config.port} (${config.providerMode})`);
+  activeServer = createApp().listen(config.port, config.host, () => {
+    console.log(`Catalyst API listening on http://${config.host}:${config.port} (${config.providerMode})`);
   });
 
   const shutdown = () => {

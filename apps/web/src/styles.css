@@ -2544,6 +2544,7 @@ button { cursor: pointer; }
     overflow-y: visible !important;
   }
   .editor-canvas-container {
+    order: -1;
     height: 520px !important;
     min-height: 480px !important;
   }

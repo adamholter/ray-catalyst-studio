@@ -1,4 +1,16 @@
 import { expect, test } from "@playwright/test";
+import { readFile } from "node:fs/promises";
+
+test("health does not report disabled storage adapters as configured", async ({ request }) => {
+  const response = await request.get("/api/health");
+  expect(response.ok()).toBe(true);
+  const health = await response.json();
+  expect(health.storeDriver).toBe("file");
+  expect(health.assetStorageDriver).toBe("none");
+  expect(health.liveProvidersConfigured.postgres).toBe(false);
+  expect(health.liveProvidersConfigured.r2).toBe(false);
+  expect(health.liveProvidersConfigured.fal).toBe(false);
+});
 
 test("creates a mockup run from metadata and preserves portrait outputs", async ({ page }) => {
   await page.goto("/mockup");
@@ -126,7 +138,7 @@ test("mockup catalyst submits rich brief inputs for prompt enhancement", async (
   expect(requestPayload.inputs.colorPalette).toEqual(["#7B61FF", "#FF6F91", "#FFD23F"]);
 });
 
-test("converts a raster mockup to editable HTML with mapped assets", async ({ page }) => {
+test("converts a raster mockup to editable HTML with mapped assets", async ({ page }, testInfo) => {
   const generatedRun: any = {
     id: "mockup-convert-1",
     createdAt: new Date().toISOString(),
@@ -224,6 +236,24 @@ test("converts a raster mockup to editable HTML with mapped assets", async ({ pa
   await expect(page.locator(".asset-item-tile")).toHaveCount(5);
   await expect(page.getByText("Header image asset")).toBeVisible();
 
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: /Export HTML/ }).click();
+  const download = await downloadPromise;
+  const exportedHtml = await readFile((await download.path())!, "utf8");
+  const exportPage = await page.context().newPage();
+  await exportPage.setContent(exportedHtml);
+  const geometry = await exportPage.locator(".catalyst-container").evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return { x: rect.x, width: rect.width, viewport: window.innerWidth, zoom: Number(getComputedStyle(element).zoom) };
+  });
+  expect(geometry.zoom).toBeCloseTo(Math.min(1, geometry.viewport / 864));
+  expect(geometry.x).toBeGreaterThanOrEqual(0);
+  expect(geometry.x + geometry.width).toBeLessThanOrEqual(geometry.viewport + 1);
+  await exportPage.screenshot({ path: testInfo.outputPath("export.png"), fullPage: true });
+  await exportPage.close();
+  await expect.poll(() => page.locator(".mockup-editor-fullscreen").evaluate((element) => Math.round(element.getBoundingClientRect().top))).toBe(0);
+  await page.screenshot({ path: testInfo.outputPath("editor.png") });
+
   // Check code view
   await page.getByRole("button", { name: "HTML Source" }).click();
   await expect(page.locator(".code-textarea")).toBeVisible();
@@ -314,6 +344,10 @@ test("editable mockup page converts an uploaded raster image into the canvas edi
   await expect(page.locator(".code-textarea")).toHaveValue(/Editable landing page/);
   await expect(page.locator(".code-textarea")).toHaveValue(/text-align:\s*center/);
   await expect(page.locator(".code-textarea")).toHaveValue(/left:\s*24px/);
+  const source = await page.locator(".code-textarea").inputValue();
+  await page.locator(".code-textarea").fill(source.replace("Editable landing page", "Revised! landing page"));
+  await page.getByRole("button", { name: "Design Canvas" }).click();
+  await expect(page.frameLocator(".gjs-frame").last().getByText("Revised! landing page", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Exit mockup editor" }).click();
   await expect(page.locator(".mockup-editor-fullscreen")).not.toBeVisible();
   await expect(page.getByRole("button", { name: "Open editor" })).toBeVisible();
@@ -946,6 +980,11 @@ test("loads tool hub via / and navigates to brand catalyst workbench", async ({ 
 });
 
 test("brand catalyst submits through the Catalyst run API and renders the persisted result", async ({ page }) => {
+  await page.route("**/api/capabilities", async (route) => {
+    const response = await route.fetch();
+    const data = await response.json();
+    await route.fulfill({ json: { ...data, providerMode: "live" } });
+  });
   let storedRuns: any[] = [];
   let requestBody: any = null;
   const brandRun = {
@@ -1024,6 +1063,7 @@ test("brand catalyst submits through the Catalyst run API and renders the persis
   expect(requestBody.modelId).toBe("brand-identity-pipeline");
   await expect(page.locator(".brand-output-header h1")).toHaveText("LUMA");
   await expect(page.locator(".brand-output-header p")).toHaveText("Light with discipline.");
+  await expect(page.locator(".session-cost")).toHaveText("session est. $0.00");
   await page.getByRole("button", { name: "Skill file" }).click();
   await expect(page.getByText("# LUMA Brand System")).toBeVisible();
   await page.getByRole("button", { name: "Icons" }).click();

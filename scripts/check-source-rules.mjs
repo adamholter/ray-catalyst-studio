@@ -1,8 +1,9 @@
 import { readdir, readFile } from "node:fs/promises";
 import { execFileSync } from "node:child_process";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const root = new URL("..", import.meta.url).pathname;
+const root = fileURLToPath(new URL("..", import.meta.url));
 const sourceDirs = ["apps/api/src", "apps/web/src", "packages/core/src"];
 const sourceRules = [
   {
@@ -45,17 +46,22 @@ for (const sourceDir of sourceDirs) {
   }
 }
 
-const publicFiles = execFileSync("git", ["ls-files", "--cached", "--others", "--exclude-standard"], {
+const publicFiles = execFileSync("git", ["ls-files", "-z", "--cached", "--others", "--exclude-standard"], {
   cwd: root,
   encoding: "utf8"
-}).trim().split("\n").filter(Boolean);
+}).split("\0").filter(Boolean);
 
 for (const relativeFile of publicFiles) {
+  if (/(^|\/)\.env(?:\..*)?$/.test(relativeFile) && !relativeFile.endsWith(".env.example")) {
+    violations.push(`${relativeFile}: Environment files must not be published.`);
+  }
   let text;
   try {
     text = await readFile(join(root, relativeFile), "utf8");
-  } catch {
-    continue;
+  } catch (error) {
+    // A tracked file may have been intentionally deleted in the working tree.
+    if (error.code === "ENOENT") continue;
+    throw error;
   }
   for (const rule of secretRules) {
     if (rule.pattern.test(text)) {

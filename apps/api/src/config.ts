@@ -1,5 +1,8 @@
-import "dotenv/config";
-import { execFileSync } from "node:child_process";
+import dotenv from "dotenv";
+import { fileURLToPath } from "node:url";
+
+// Resolve against this file, not npm's workspace-dependent working directory.
+dotenv.config({ path: fileURLToPath(new URL("../../../.env", import.meta.url)), quiet: true });
 
 export type ProviderMode = "mock" | "live";
 export type StoreDriver = "file" | "postgres";
@@ -9,7 +12,7 @@ export type LlmProvider = "openrouter" | "fal-openrouter";
 function providerMode(): ProviderMode {
   if (process.env.CATALYST_PROVIDER_MODE === "mock") return "mock";
   if (process.env.CATALYST_PROVIDER_MODE === "live") return "live";
-  return process.env.FAL_KEY ? "live" : "mock";
+  return "live";
 }
 
 const selectedProviderMode = providerMode();
@@ -34,24 +37,12 @@ function llmProvider(): LlmProvider {
   return process.env.OPENROUTER_API_KEY ? "openrouter" : "fal-openrouter";
 }
 
-function readKeychainSecret(service: string) {
-  try {
-    return execFileSync("security", ["find-generic-password", "-s", service, "-w"], {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"]
-    }).trim();
-  } catch {
-    return "";
-  }
-}
-
 const allowMockOpenRouter = process.env.CATALYST_ALLOW_OPENROUTER_IN_MOCK === "1";
 const shouldReadLiveSecrets = selectedProviderMode === "live" || allowMockOpenRouter;
-const keychainOpenRouterKey = shouldReadLiveSecrets ? readKeychainSecret("ironwood_openrouter_api_key") : "";
-const keychainFalKey = shouldReadLiveSecrets ? readKeychainSecret("ironwood_fal_api_key") : "";
 
 export const config = {
-  port: Number(process.env.CATALYST_API_PORT || 5191),
+  port: Number(process.env.PORT || process.env.CATALYST_API_PORT || 5191),
+  host: process.env.CATALYST_API_HOST || (process.env.PORT || process.env.NODE_ENV === "production" ? "0.0.0.0" : "127.0.0.1"),
   providerMode: selectedProviderMode,
   storeDriver: storeDriver(),
   databaseUrl: process.env.DATABASE_URL || "",
@@ -65,10 +56,10 @@ export const config = {
     secretAccessKey: process.env.R2_SECRET_ACCESS_KEY || "",
     publicBaseUrl: (process.env.R2_PUBLIC_BASE_URL || "").replace(/\/+$/, "")
   },
-  falKey: process.env.FAL_KEY || keychainFalKey || "",
+  falKey: shouldReadLiveSecrets ? process.env.FAL_KEY || "" : "",
   falObjectLifecyclePreference: process.env.FAL_OBJECT_LIFECYCLE_PREFERENCE || "",
   llmProvider: llmProvider(),
-  openRouterKey: shouldReadLiveSecrets ? keychainOpenRouterKey || process.env.OPENROUTER_API_KEY || "" : "",
+  openRouterKey: shouldReadLiveSecrets ? process.env.OPENROUTER_API_KEY || "" : "",
   openRouterModel: process.env.CATALYST_OPENROUTER_MODEL || "google/gemini-3.5-flash",
   imageToWebsiteAgentModel: process.env.CATALYST_IMAGE_TO_WEBSITE_AGENT_MODEL || "~anthropic/claude-sonnet-latest",
   openRouterReasoning: process.env.CATALYST_OPENROUTER_REASONING || "low",

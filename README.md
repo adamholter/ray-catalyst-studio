@@ -25,7 +25,11 @@ Then open:
 http://127.0.0.1:5190
 ```
 
-If `FAL_KEY` is present, the local app runs live by default. Automated tests force mock mode on separate test ports so routine validation does not spend API money.
+Normal use defaults to live mode and requires `FAL_KEY`. Missing credentials produce an error, never simulated results. Automated tests explicitly select mock mode on separate test ports and do not spend API money.
+
+The API reads the repository-root `.env` regardless of the launch directory. Explicit process environment variables take precedence. Catalyst never reads another project's Keychain credentials. On a host, `PORT` takes precedence over the local `CATALYST_API_PORT` setting.
+
+Local API access defaults to loopback. Production or a host-provided `PORT` binds all interfaces; use `CATALYST_API_HOST` to override. Hosted access requires authentication or an access-controlled host because generation spends the server's provider key.
 
 ## Live Provider Mode
 

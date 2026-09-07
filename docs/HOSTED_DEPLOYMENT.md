@@ -2,6 +2,8 @@
 
 Catalyst Studio now supports a hosted, durable deployment without changing the visible app.
 
+This is a deployment guide, not evidence of a running shared instance. The host connection, automatic deployment, and hosted storage still need verification. Do not publish the unauthenticated API to the open internet: it can spend the configured provider key and exposes shared results. Use an access-controlled host or add authentication before sharing a hosted URL.
+
 ## Target Shape
 
 - GitHub is the source of truth for code.
@@ -133,10 +135,12 @@ Generated results belong in Postgres + R2, not Git.
 3. Provision Cloudflare R2 bucket and API token.
 4. Add production env vars to the host.
 5. Deploy from GitHub `main`.
+   Configure the host to wait for the required CI check before deploying. The API honors the host's `PORT` variable.
 6. Verify `/api/health` reports `storeDriver: "postgres"` and `assetStorageDriver: "r2"`.
 7. Run one low-cost live generation.
 8. Confirm the resulting image URL points to `/api/assets/...` or the configured R2 public base URL.
 9. Confirm reloads and redeploys keep the run visible.
+10. Verify access controls and confirm an approved test commit reaches the shared URL without Ray running a local update.
 
 ## Current Deferrals
 

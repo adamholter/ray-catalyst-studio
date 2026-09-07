@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef, type CSSProperties } from "react";
+import { createPortal } from "react-dom";
 import grapesjs, { type Editor } from "grapesjs";
 import "grapesjs/dist/css/grapes.min.css";
 import type { ExtractedAsset, RunRecord } from "@ray-catalyst/core";
@@ -23,7 +24,7 @@ function cleanEditorHtml(html: string) {
 }
 
 function responsiveFrameCss(frameWidth: number, frameHeight: number, fixedViewportWidth?: number) {
-  const scale = fixedViewportWidth ? String(Math.min(1, fixedViewportWidth / frameWidth)) : `min(1, calc(100vw / ${frameWidth}))`;
+  const scale = fixedViewportWidth ? String(Math.min(1, fixedViewportWidth / frameWidth)) : `min(1, calc(100vw / ${frameWidth}px))`;
   return `
     html, body { width: 100%; overflow-x: hidden; }
     body { --catalyst-editor-scale: ${scale}; min-height: calc(${frameHeight}px * var(--catalyst-editor-scale)); }
@@ -32,6 +33,11 @@ function responsiveFrameCss(frameWidth: number, frameHeight: number, fixedViewpo
 }
 
 export function MockupEditor({ run, onClose, onRunUpdated, initialTab = "preview" }: MockupEditorProps) {
+  useEffect(() => {
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = overflow; };
+  }, []);
   const mockup = run.output?.mockup;
   const [activeTab, setActiveTab] = useState<"design" | "preview" | "html" | "css">(initialTab);
   const [activeTool, setActiveTool] = useState<"select" | "edit" | "inspect" | "compare">("select");
@@ -330,17 +336,16 @@ export function MockupEditor({ run, onClose, onRunUpdated, initialTab = "preview
       background: #faf9f5;
     }
     .catalyst-container {
-      --catalyst-export-scale: min(1, calc(100vw / ${frameWidth}));
+      --catalyst-export-scale: min(1, calc(100vw / ${frameWidth}px));
       width: ${frameWidth}px;
       max-width: none;
       margin: 0 auto;
       min-height: ${frameHeight}px;
       background: #ffffff;
       position: relative;
-      transform: scale(var(--catalyst-export-scale));
-      transform-origin: top center;
+      zoom: var(--catalyst-export-scale);
     }
-    body { overflow-x: hidden; min-height: calc(${frameHeight}px * min(1, calc(100vw / ${frameWidth}))); }
+    body { overflow-x: hidden; min-height: calc(${frameHeight}px * min(1, calc(100vw / ${frameWidth}px))); }
     ${cssContent}
   </style>
 </head>
@@ -420,7 +425,7 @@ export function MockupEditor({ run, onClose, onRunUpdated, initialTab = "preview
     
     const loadIntoEditor = () => {
       const editorCss = `${cssContent || ""}\n${responsiveFrameCss(mockup.sourceWidth || 1024, mockup.sourceHeight || 1536, designDevice === "mobile" ? 390 : undefined)}`;
-      const syncKey = `${mockup.id}:${htmlContent.length}:${editorCss.length}`;
+      const syncKey = JSON.stringify([mockup.id, htmlContent, editorCss]);
       if (grapesSyncRef.current === syncKey) return;
       editor.setComponents(htmlContent || "<main></main>");
       editor.setStyle(editorCss);
@@ -725,7 +730,7 @@ export function MockupEditor({ run, onClose, onRunUpdated, initialTab = "preview
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            --catalyst-frame-scale: min(1, calc(100vw / ${frameWidth}));
+            --catalyst-frame-scale: min(1, calc(100vw / ${frameWidth}px));
             min-height: calc(${frameHeight}px * var(--catalyst-frame-scale));
           }
           .catalyst-frame-fit {
@@ -817,7 +822,7 @@ export function MockupEditor({ run, onClose, onRunUpdated, initialTab = "preview
     );
   }
 
-  return (
+  return createPortal(
     <div className="mockup-editor-fullscreen" role="dialog" aria-modal="true">
       {/* Top Header Control bar */}
       <header className="editor-top-bar">
@@ -1152,15 +1157,14 @@ export function MockupEditor({ run, onClose, onRunUpdated, initialTab = "preview
 
         {/* Central Display Pane */}
         <main className="editor-canvas-container">
-          {activeTab === "design" ? (
-            <div className="grapes-editor-shell">
+            <div className="grapes-editor-shell" style={activeTab === "design" ? undefined : { display: "none" }}>
               <div className="grapes-editor-toolbar">
                 <button type="button" onClick={() => { setDesignDevice("desktop"); grapesEditorRef.current?.setDevice("Desktop"); }}>Desktop</button>
                 <button type="button" onClick={() => { setDesignDevice("mobile"); grapesEditorRef.current?.setDevice("Mobile"); }}>Mobile</button>
               </div>
               <div className="grapes-editor-canvas" ref={grapesContainerRef} />
             </div>
-          ) : activeTab === "preview" ? (
+          {activeTab === "design" ? null : activeTab === "preview" ? (
             activeTool === "compare" ? (
               /* High-fidelity Comparison View */
               <div className="compare-grid-layout">
@@ -1229,6 +1233,7 @@ export function MockupEditor({ run, onClose, onRunUpdated, initialTab = "preview
         </main>
 
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

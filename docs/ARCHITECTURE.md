@@ -36,6 +36,8 @@ The backend supports two storage modes:
 
 The `RunRecord` remains the API contract. In Postgres mode, the initial durable schema stores each run as JSONB so the hosted migration does not require a risky rewrite of the app.
 
+File storage serializes saves and deletes within one API process and atomically replaces the JSON file. A missing file starts an empty store; invalid or unreadable data raises an error without replacing it. Saving or deleting a run must never prune other records. `CATALYST_MAX_STORED_RUNS` limits Postgres list queries, not retention. Use Postgres for multiple API processes; the file queue does not coordinate separate processes.
+
 Image and SVG assets can be copied into Cloudflare R2 by setting `CATALYST_ASSET_STORAGE_DRIVER=r2` plus R2 credentials. When enabled, the save path copies generated images, edited images, vectorized SVGs, extracted mockup assets, and brand assets into R2. The frontend keeps using normal image URLs; those URLs either point to `R2_PUBLIC_BASE_URL` or same-origin `/api/assets/...`.
 
 Do not store generated assets in Git. Do not rely on fal.ai media URLs as the durable source of truth for shared/client work.

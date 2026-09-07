@@ -1,5 +1,5 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import pg from "pg";
 import type { GeneratedImage, RunOutput, RunRecord } from "@ray-catalyst/core";
 import { config } from "../config";
@@ -7,15 +7,18 @@ import { persistRunAssets } from "./assetStorage";
 
 const { Pool } = pg;
 
-const storePath = join(process.cwd(), config.dataDir, "runs.json");
+const storePath = resolve(config.dataDir, "runs.json");
 const legacyStorePath = join(process.cwd(), ".data", "runs.json");
 let saveQueue = Promise.resolve();
 
 async function readRunsFile(path: string): Promise<RunRecord[]> {
   try {
-    return JSON.parse(await readFile(path, "utf8")) as RunRecord[];
-  } catch {
-    return [];
+    const runs: unknown = JSON.parse(await readFile(path, "utf8"));
+    if (!Array.isArray(runs)) throw new Error("Expected an array of run records");
+    return runs as RunRecord[];
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+    throw new Error(`Cannot read run storage at ${path}. Existing data has not been replaced.`, { cause: error });
   }
 }
 
@@ -119,7 +122,7 @@ class FileRunStore {
     const combinedRuns = primaryRuns.length ? primaryRuns : legacyRuns;
     const nextRuns = combinedRuns.filter((run) => run.id !== id);
     if (nextRuns.length === combinedRuns.length) return false;
-    await this.writeRuns(nextRuns.slice(0, maxRuns()));
+    await this.writeRuns(nextRuns);
     return true;
   }
 
@@ -130,7 +133,7 @@ class FileRunStore {
     const storedRun = cleanRun(durableRun);
     if (existing >= 0) runs[existing] = storedRun;
     else runs.unshift(storedRun);
-    await this.writeRuns(runs.slice(0, maxRuns()));
+    await this.writeRuns(runs);
     return durableRun;
   }
 
@@ -235,11 +238,15 @@ export async function getRun(id: string): Promise<RunRecord | undefined> {
 }
 
 export async function deleteRun(id: string): Promise<boolean> {
-  return store.deleteRun(id);
+  return queueWrite(() => store.deleteRun(id));
 }
 
 export async function saveRun(run: RunRecord): Promise<RunRecord> {
-  const operation = saveQueue.then(() => store.saveRun(run));
+  return queueWrite(() => store.saveRun(run));
+}
+
+function queueWrite<T>(write: () => Promise<T>): Promise<T> {
+  const operation = saveQueue.then(write);
   saveQueue = operation.then(
     () => undefined,
     () => undefined

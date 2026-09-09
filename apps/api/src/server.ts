@@ -152,7 +152,7 @@ export function createApp() {
         req.params.id,
         typeof req.body.imageUrl === "string" ? req.body.imageUrl : undefined,
         String(req.body.prompt || ""),
-        typeof req.body.modelId === "string" ? req.body.modelId : "gpt-image-2",
+        typeof req.body.modelId === "string" ? req.body.modelId : "gpt-image-2.5-flare",
         {
           quality: typeof req.body.quality === "string" ? req.body.quality : undefined,
           resolution: typeof req.body.resolution === "string" ? req.body.resolution : undefined
@@ -204,7 +204,7 @@ export function createApp() {
         status: "succeeded",
         request: {
           taskId: "mockup",
-          modelId: "gpt-image-2",
+          modelId: "gpt-image-2.5-flare",
           inputs: {
             prompt: typeof req.body?.prompt === "string" ? req.body.prompt : "Uploaded raster mockup",
             aspectRatio: typeof req.body?.aspectRatio === "string" ? req.body.aspectRatio : "2:3",
@@ -213,7 +213,7 @@ export function createApp() {
           attachments: []
         },
         model: {
-          id: "gpt-image-2",
+          id: "gpt-image-2.5-flare",
           label: "Uploaded Mockup",
           provider: "mock",
           endpoint: "local-upload",

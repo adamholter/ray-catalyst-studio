@@ -31,8 +31,8 @@ test("maps image_size preset models to fal enum values", () => {
   });
 });
 
-test("maps GPT-Image-2 custom ratios to explicit dimensions", () => {
-  assert.deepEqual(resolveProviderAspectInput(getModel("gpt-image-2"), "21:9"), {
+test("maps GPT Image 2.5 Flare custom ratios to explicit dimensions", () => {
+  assert.deepEqual(resolveProviderAspectInput(getModel("gpt-image-2.5-flare"), "21:9"), {
     key: "image_size",
     value: { width: 1792, height: 768 },
     aspectRatio: "21:9"
@@ -42,7 +42,7 @@ test("maps GPT-Image-2 custom ratios to explicit dimensions", () => {
 test("prompt enhancement context includes the full mockup creative brief", () => {
   const request: CreateRunRequest = {
     taskId: "mockup",
-    modelId: "gpt-image-2",
+    modelId: "gpt-image-2.5-flare",
     inputs: {
       prompt: "A playful preschool website.",
       aspectRatio: "2:3",
@@ -63,9 +63,9 @@ test("prompt enhancement context includes the full mockup creative brief", () =>
     ]
   };
 
-  const context = buildPromptEnhancementContext(request, getModel("gpt-image-2"));
+  const context = buildPromptEnhancementContext(request, getModel("gpt-image-2.5-flare"));
 
-  assert.match(context, /Selected model: GPT-Image-2/);
+  assert.match(context, /Selected model: GPT Image 2.5 Flare/);
   assert.match(context, /Aspect ratio: 2:3/);
   assert.match(context, /Quality: low/);
   assert.match(context, /Client \/ website type: Quality learning center/);

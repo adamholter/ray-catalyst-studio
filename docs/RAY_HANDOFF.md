@@ -121,7 +121,9 @@ Use the architecture instead of patching around it.
 - The frontend should render model controls from `/api/capabilities`.
 - Do not hard-code provider-specific model forms in React.
 - Each model declares its exact aspect ratios. Do not use generic "portrait" or "landscape" labels without exact values.
-- GPT-Image-2 quality applies to GPT-Image-2 only.
+- GPT Image 2.5 Flare is the default GPT image model. Sunburst is available in both generation and edit selectors. Both expose low, medium, high, xhigh, max, and auto quality. Nano Banana has no quality setting.
+- Image 2.5 uses fal endpoints `openai/gpt-image-2.5/{flare|sunburst}/text-to-image` and `/edit`. Keep the selected model on errors, never silently substitute another provider. Existing Image 2 records keep their original labels; legacy request IDs resolve to Flare.
+- Provider contracts verified September 9, 2026: [Flare API](https://fal.ai/models/openai/gpt-image-2.5/flare/text-to-image/api), [Sunburst edit API](https://fal.ai/models/openai/gpt-image-2.5/sunburst/edit/api). Explicit dimensions must be multiples of 16, at most 3840 per edge, aspect ratio at most 3:1, and 655,360 to 8,294,400 total pixels. Edits accept up to 16 reference URLs. UI prices estimate square image output; input tokens and size affect the billed total.
 - Nano Banana 2 edit mode has no quality setting.
 - Recraft V4.1 should stay one model with `Pro` and `Vector` settings, not four model entries.
 - Recraft raster-to-SVG vectorization is a result-level action that calls `fal-ai/recraft/vectorize`.

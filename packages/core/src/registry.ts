@@ -265,7 +265,7 @@ export const TASKS: TaskSpec[] = [
     id: "mockup",
     label: "Interface mockup",
     description: "Generate standalone web, app, and product-interface designs, not browser/device-frame presentation scenes.",
-    defaultModelId: "gpt-image-2",
+    defaultModelId: "gpt-image-2.5-flare",
     optionalInputFields: [
       clientTypeField,
       clientPreferencesField,
@@ -297,13 +297,18 @@ export const TASKS: TaskSpec[] = [
   }
 ];
 
+export const GPT_IMAGE_QUALITY_OPTIONS = ["low", "medium", "high", "xhigh", "max", "auto"].map((value) => ({
+  value,
+  label: value === "xhigh" ? "Extra high" : value[0].toUpperCase() + value.slice(1)
+}));
+
 export const MODEL_REGISTRY: ModelSpec[] = [
-  {
-    id: "gpt-image-2",
-    label: "GPT-Image-2",
+  ...(["flare", "sunburst"] as const).map((variant): ModelSpec => ({
+    id: `gpt-image-2.5-${variant}`,
+    label: `GPT Image 2.5 ${variant === "flare" ? "Flare" : "Sunburst"}`,
     taskIds: ["mockup", "logo", "asset"],
     provider: "fal",
-    endpoint: "openai/gpt-image-2",
+    endpoint: `openai/gpt-image-2.5/${variant}/text-to-image`,
     costTier: "expensive",
     speed: "slow",
     inputFields: [
@@ -315,11 +320,7 @@ export const MODEL_REGISTRY: ModelSpec[] = [
         label: "Quality",
         kind: "select",
         defaultValue: "low",
-        options: [
-          { label: "Low", value: "low" },
-          { label: "Medium", value: "medium" },
-          { label: "High", value: "high" }
-        ],
+        options: GPT_IMAGE_QUALITY_OPTIONS,
         help: "Use low for tests."
       }
     ],
@@ -342,11 +343,11 @@ export const MODEL_REGISTRY: ModelSpec[] = [
     },
     defaultPostprocessors: [],
     ui: {
-      shortName: "GPT-Image-2",
+      shortName: `GPT Image 2.5 ${variant === "flare" ? "Flare" : "Sunburst"}`,
       accent: "#355C7D",
       recommendedFor: ["High-quality concept renders when speed/cost are acceptable"]
     }
-  },
+  })),
   {
     id: "nano-banana-2",
     label: "Nano Banana 2",
@@ -638,12 +639,8 @@ const editQualityField: FieldSpec = {
   label: "Quality",
   kind: "select",
   defaultValue: "low",
-  options: [
-    { label: "Low", value: "low" },
-    { label: "Medium", value: "medium" },
-    { label: "High", value: "high" }
-  ],
-  help: "GPT-Image-2 only. Use low for tests."
+  options: GPT_IMAGE_QUALITY_OPTIONS,
+  help: "Use low for tests."
 };
 
 const editResolutionField: FieldSpec = {
@@ -668,20 +665,20 @@ const editOutput: OutputSpec = {
 };
 
 export const EDIT_MODEL_REGISTRY: EditModelSpec[] = [
-  {
-    id: "gpt-image-2",
-    label: "GPT-Image-2",
+  ...(["flare", "sunburst"] as const).map((variant): EditModelSpec => ({
+    id: `gpt-image-2.5-${variant}`,
+    label: `GPT Image 2.5 ${variant === "flare" ? "Flare" : "Sunburst"}`,
     provider: "fal",
-    endpoint: "openai/gpt-image-2/edit",
+    endpoint: `openai/gpt-image-2.5/${variant}/edit`,
     costTier: "expensive",
     speed: "slow",
     inputFields: [editQualityField],
     output: editOutput,
     ui: {
-      shortName: "GPT-Image-2",
+      shortName: `GPT Image 2.5 ${variant === "flare" ? "Flare" : "Sunburst"}`,
       note: "Best quality control; exposes quality setting."
     }
-  },
+  })),
   {
     id: "nano-banana-2",
     label: "Nano Banana 2",
@@ -792,12 +789,14 @@ export function getTask(taskId: TaskId): TaskSpec {
 }
 
 export function getModel(modelId: string): ModelSpec {
+  if (modelId === "gpt-image-2") modelId = "gpt-image-2.5-flare";
   const model = MODEL_REGISTRY.find((item) => item.id === modelId);
   if (!model) throw new Error(`Unknown model: ${modelId}`);
   return model;
 }
 
 export function getEditModel(modelId: string): EditModelSpec {
+  if (modelId === "gpt-image-2") modelId = "gpt-image-2.5-flare";
   const model = EDIT_MODEL_REGISTRY.find((item) => item.id === modelId);
   if (!model) throw new Error(`Unknown edit model: ${modelId}`);
   return model;

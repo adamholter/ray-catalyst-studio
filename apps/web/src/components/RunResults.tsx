@@ -230,8 +230,8 @@ export function RunResults({
   const [working, setWorking] = useState(false);
   const [modalError, setModalError] = useState("");
   const [editPrompt, setEditPrompt] = useState("");
-  const [editModelId, setEditModelId] = useState<string>("gpt-image-2");
-  const [editQuality, setEditQuality] = useState<"low" | "medium" | "high">("low");
+  const [editModelId, setEditModelId] = useState<string>("gpt-image-2.5-flare");
+  const [editQuality, setEditQuality] = useState<string>("low");
   const [editResolution, setEditResolution] = useState<"1k" | "2k">("1k");
   const [showVectorXray, setShowVectorXray] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -567,10 +567,8 @@ export function RunResults({
                   {editModelHasQuality ? (
                     <label className="mini-select-label">
                       <span>Quality</span>
-                      <select value={editQuality} onChange={(event) => setEditQuality(event.target.value as "low" | "medium" | "high")} disabled={working}>
-                        <option value="low">Low</option>
-                        <option value="medium">Med</option>
-                        <option value="high">High</option>
+                      <select value={editQuality} onChange={(event) => setEditQuality(event.target.value)} disabled={working}>
+                        {editModelFields.find((field) => field.key === "quality")?.options?.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                       </select>
                     </label>
                   ) : null}

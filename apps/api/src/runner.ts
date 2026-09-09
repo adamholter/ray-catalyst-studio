@@ -351,7 +351,7 @@ function buildProviderInput(request: CreateRunRequest, model: ModelSpec) {
   input.prompt = buildPrompt(request);
   applyAspectInput(input, request, model);
 
-  if (model.id === "gpt-image-2") {
+  if (model.id.startsWith("gpt-image-2.5-")) {
     input.num_images = 1;
     input.output_format = input.output_format || "png";
   } else if (model.id.startsWith("recraft-v4")) {
@@ -417,52 +417,27 @@ async function callLiveModel(model: ModelSpec, request: CreateRunRequest): Promi
   const images: GeneratedImage[] = [];
   const rawResponses: unknown[] = [];
   const invocations: ModelInvocation[] = [];
-  let lastError: unknown = null;
 
   for (let index = 0; index < count; index += 1) {
     const endpoint = model.id === "recraft-v4" ? recraftEndpoint(request.inputs) : model.endpoint;
-    try {
-      const result = await callFalQueue(endpoint, buildProviderInput(request, model));
-      const output = normalizeOutput(result.data);
-      rawResponses.push({ requestId: result.requestId, data: result.data });
-      invocations.push(
-        invocation({
-          provider: "fal",
-          endpoint,
-          modelId: model.id,
-          requestId: result.requestId,
-          operation: "generate",
-          status: "succeeded",
-          completedAt: now()
-        })
-      );
-      if (output.images?.length) images.push(...output.images);
-    } catch (error) {
-      lastError = error;
-      if (model.id !== "gpt-image-2") throw error;
-
-      const fallbackModel = getModel("grok-imagine");
-      const fallback = await callFalQueue(fallbackModel.endpoint, buildProviderInput(request, fallbackModel));
-      const fallbackOutput = normalizeOutput(fallback.data);
-      rawResponses.push({ fallbackFrom: model.id, requestId: fallback.requestId, data: fallback.data });
-      invocations.push(
-        invocation({
-          provider: "fal",
-          endpoint: fallbackModel.endpoint,
-          modelId: fallbackModel.id,
-          requestId: fallback.requestId,
-          operation: "generate",
-          status: "succeeded",
-          completedAt: now()
-        })
-      );
-      if (fallbackOutput.images?.length) images.push(...fallbackOutput.images);
-    }
+    const result = await callFalQueue(endpoint, buildProviderInput(request, model));
+    const output = normalizeOutput(result.data);
+    rawResponses.push({ requestId: result.requestId, data: result.data });
+    invocations.push(
+      invocation({
+        provider: "fal",
+        endpoint,
+        modelId: model.id,
+        requestId: result.requestId,
+        operation: "generate",
+        status: "succeeded",
+        completedAt: now()
+      })
+    );
+    if (output.images?.length) images.push(...output.images);
   }
 
-  if (!images.length && lastError) {
-    throw lastError instanceof Error ? lastError : new Error(String(lastError));
-  }
+  if (!images.length) throw new Error(`${model.label} returned no images`);
 
   return { output: { images, raw: rawResponses.length === 1 ? rawResponses[0] : rawResponses }, invocations };
 }
@@ -727,22 +702,23 @@ function editEndpoint(modelId: string) {
   if (modelId === "grok-imagine-edit") return "xai/grok-imagine-image/edit";
   if (modelId === "grok-imagine-quality-edit") return "xai/grok-imagine-image/quality/edit";
   if (modelId === "seedream-5-lite-edit") return "fal-ai/bytedance/seedream/v5/lite/edit";
-  return "openai/gpt-image-2/edit";
+  return "openai/gpt-image-2.5/flare/edit";
 }
 
 function editBaseGenerationModel(modelId: string) {
+  if (modelId.startsWith("gpt-image-2.5-")) return modelId;
   if (modelId === "nano-banana-2") return "nano-banana-2";
   if (modelId === "grok-imagine-edit") return "grok-imagine";
   if (modelId === "grok-imagine-quality-edit") return "grok-imagine-quality";
   if (modelId === "seedream-5-lite-edit") return "seedream-5-lite";
-  return "gpt-image-2";
+  return "gpt-image-2.5-flare";
 }
 
 export async function executeImageEdit(
   runId: string,
   imageUrl: string | undefined,
   prompt: string,
-  modelId = "gpt-image-2",
+  modelId = "gpt-image-2.5-flare",
   options: { quality?: string; resolution?: string } = {}
 ): Promise<RunRecord> {
   const run = await getRun(runId);
@@ -754,7 +730,8 @@ export async function executeImageEdit(
   if (!prompt.trim()) throw new Error("Edit prompt is required");
 
   run.status = "running";
-  const editQuality = ["low", "medium", "high"].includes(String(options.quality)) ? String(options.quality) : "low";
+  const qualityOptions = editModel.inputFields.find((field) => field.key === "quality")?.options || [];
+  const editQuality = qualityOptions.some((option) => option.value === options.quality) ? String(options.quality) : "low";
   const editResolution = ["1k", "2k"].includes(String(options.resolution).toLowerCase()) ? String(options.resolution).toLowerCase() : "1k";
 
   run.events.push(event(`Editing image with ${editModel.label}`));
@@ -821,7 +798,7 @@ export async function executeImageEdit(
           prompt,
           count: 1,
           aspectRatio: run.request.inputs.aspectRatio || "1:1",
-          ...(baseModelId === "gpt-image-2" ? { quality: editQuality } : {}),
+          ...(baseModelId.startsWith("gpt-image-2.5-") ? { quality: editQuality } : {}),
           ...(baseModelId === "grok-imagine-quality" || baseModelId === "grok-imagine" ? { resolution: editResolution } : {})
         },
         attachments: []

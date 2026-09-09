@@ -122,13 +122,29 @@ describe("model registry", () => {
 
   it("declares compact image edit model capabilities separately from generation models", () => {
     expect(EDIT_MODEL_REGISTRY.map((model) => model.id)).toEqual([
-      "gpt-image-2",
+      "gpt-image-2.5-flare",
+      "gpt-image-2.5-sunburst",
       "nano-banana-2",
       "grok-imagine-edit",
       "grok-imagine-quality-edit",
       "seedream-5-lite-edit"
     ]);
-    expect(getEditModel("gpt-image-2").inputFields.some((field) => field.key === "quality")).toBe(true);
+    expect(getEditModel("gpt-image-2.5-flare").inputFields.some((field) => field.key === "quality")).toBe(true);
     expect(getEditModel("grok-imagine-quality-edit").inputFields.some((field) => field.key === "resolution")).toBe(true);
+  });
+
+  it("routes both Image 2.5 variants and preserves legacy model lookup", () => {
+    for (const variant of ["flare", "sunburst"]) {
+      const id = `gpt-image-2.5-${variant}`;
+      expect(getModel(id).endpoint).toBe(`openai/gpt-image-2.5/${variant}/text-to-image`);
+      expect(getEditModel(id).endpoint).toBe(`openai/gpt-image-2.5/${variant}/edit`);
+      for (const model of [getModel(id), getEditModel(id)]) {
+        expect(model.inputFields.find((field) => field.key === "quality")?.options?.map((option) => option.value))
+          .toEqual(["low", "medium", "high", "xhigh", "max", "auto"]);
+      }
+    }
+    expect(MODEL_REGISTRY.some((model) => model.id === "gpt-image-2")).toBe(false);
+    expect(getModel("gpt-image-2").id).toBe("gpt-image-2.5-flare");
+    expect(getEditModel("gpt-image-2").id).toBe("gpt-image-2.5-flare");
   });
 });

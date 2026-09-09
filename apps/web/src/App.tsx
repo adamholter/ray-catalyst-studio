@@ -69,7 +69,7 @@ function defaultInputsFor(model: ModelSpec | undefined, current: Record<string, 
 function modelDetailLabel(model: ModelSpec | undefined, inputs: Record<string, unknown>) {
   if (!model) return "Model";
   const suffix =
-    model.id === "gpt-image-2"
+    model.id.startsWith("gpt-image-2.5-")
       ? ` · ${String(inputs.quality || "low")}`
       : model.id === "grok-imagine-quality"
         ? ` · ${String(inputs.resolution || "1k")}`
@@ -90,9 +90,10 @@ function estimateCost(modelId: string, inputs: Record<string, unknown>) {
     "ideogram-v3": 0.08
   };
 
-  if (modelId === "gpt-image-2") {
+  if (modelId.startsWith("gpt-image-2.5-")) {
     const quality = String(inputs.quality || "low");
-    const qualityPrices: Record<string, number> = { low: 0.07, medium: 0.12, high: 0.17 };
+    // fal's 1024-square output estimates; input tokens and dimensions affect billing.
+    const qualityPrices: Record<string, number> = { low: 0.00588, medium: 0.01317, high: 0.05268, xhigh: 0.09366, max: 0.21072, auto: 0.05268 };
     return (qualityPrices[quality] || qualityPrices.low) * count;
   }
 
@@ -159,7 +160,7 @@ export function App() {
     const cleanPath = (initialPath === "asset" || initialPath === "assets") ? "" : initialPath;
     return getInitialTask(cleanPath);
   });
-  const [modelId, setModelId] = useState("gpt-image-2");
+  const [modelId, setModelId] = useState("gpt-image-2.5-flare");
   const [inputs, setInputs] = useState<Record<string, unknown>>(() => {
     const initialPath = window.location.pathname.replace(/^\/+|\/+$/g, "").toLowerCase();
     const cleanPath = (initialPath === "asset" || initialPath === "assets") ? "" : initialPath;

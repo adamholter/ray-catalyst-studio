@@ -18,7 +18,7 @@ test("creates a mockup run from metadata and preserves portrait outputs", async 
   await expect(page.getByText("✦ catalyst")).toBeVisible();
   await expect(page.locator(".brand-tag")).toHaveText("mockups");
   await expect(page.getByLabel("Generation model")).toBeVisible();
-  await expect(page.getByLabel("Generation model")).toContainText("GPT-Image-2");
+  await expect(page.getByLabel("Generation model")).toContainText("GPT Image 2.5 Flare");
   await expect(page.getByLabel("Generation model")).toContainText("Grok Imagine Quality");
   await expect(page.getByLabel("Generation model")).toContainText("Recraft V4.1");
   await expect(page.getByLabel("Generation model")).not.toContainText("Smart Mix");
@@ -30,7 +30,7 @@ test("creates a mockup run from metadata and preserves portrait outputs", async 
     await route.continue();
   });
   await page.getByRole("button", { name: "Generate mockups" }).click();
-  await expect(page.getByText("Sending prompt to GPT-Image-2...")).toBeVisible();
+  await expect(page.getByText("Sending prompt to GPT Image 2.5 Flare...")).toBeVisible();
   await expect(page.locator(".run-card.running").getByText("Generating mockup...").first()).toBeVisible();
 
   // Wait for generation to complete
@@ -52,7 +52,7 @@ test("creates a mockup run from metadata and preserves portrait outputs", async 
   expect(dimensions.naturalHeight).toBeGreaterThan(dimensions.naturalWidth);
   expect(dimensions.renderedHeight).toBeGreaterThan(dimensions.renderedWidth);
 
-  await card.getByRole("button", { name: "Output from GPT-Image-2 Actions" }).click();
+  await card.getByRole("button", { name: "Output from GPT Image 2.5 Flare Actions" }).click();
   await expect(page.locator(".modal-surface")).toBeVisible();
   await expect(page.getByRole("button", { name: "Enhance" })).toBeVisible();
   await expect(page.getByText("Prompt Brief")).toHaveCount(0);
@@ -146,11 +146,11 @@ test("converts a raster mockup to editable HTML with mapped assets", async ({ pa
     status: "succeeded",
     request: {
       taskId: "mockup",
-      modelId: "gpt-image-2",
+      modelId: "gpt-image-2.5-flare",
       inputs: { prompt: "A contemporary art museum landing page.", aspectRatio: "2:3" },
       attachments: []
     },
-    model: { id: "gpt-image-2", label: "GPT-Image-2", provider: "fal", endpoint: "openai/gpt-image-2" },
+    model: { id: "gpt-image-2.5-flare", label: "GPT Image 2.5 Flare", provider: "fal", endpoint: "openai/gpt-image-2.5/flare/text-to-image" },
     output: {
       images: [{ url: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='864' height='1296'></svg>", width: 864, height: 1296 }]
     },
@@ -217,7 +217,7 @@ test("converts a raster mockup to editable HTML with mapped assets", async ({ pa
   await expect(page.locator(".generate-button")).toBeEnabled({ timeout: 15000 });
 
   const card = page.locator(".run-card").first();
-  await card.getByRole("button", { name: "Output from GPT-Image-2 Actions" }).click();
+  await card.getByRole("button", { name: "Output from GPT Image 2.5 Flare Actions" }).click();
   await expect(page.locator(".modal-surface")).toBeVisible();
 
   const convertBtn = page.getByRole("button", { name: "✦ Convert to HTML" });
@@ -406,7 +406,7 @@ test("runs logo catalyst with optional color palette field or prompt only", asyn
   await expect(paletteInput).toBeVisible();
   await expect(paletteInput).toHaveAttribute("placeholder", "Optional hex colors: #111318, #F7F3EA");
   await expect(paletteInput).toHaveValue("");
-  await expect(page.locator(".run-card-title", { hasText: "GPT-Image-2" })).toHaveCount(0);
+  await expect(page.locator(".run-card-title", { hasText: "GPT Image 2.5 Flare" })).toHaveCount(0);
 
   // Run with prompt only
   await page.getByLabel("Prompt").fill("Minimalist tech company logo.");
@@ -424,7 +424,7 @@ test("runs logo catalyst with optional color palette field or prompt only", asyn
   await expect(page.locator(".generate-button")).toBeEnabled({ timeout: 15000 });
   await expect(page.locator(".run-card.succeeded").first()).toBeVisible();
   await expect(page.locator(".run-card-title", { hasText: "Grok Imagine" }).first()).toBeVisible();
-  await expect(page.locator(".run-card-title", { hasText: "GPT-Image-2" })).toHaveCount(0);
+  await expect(page.locator(".run-card-title", { hasText: "GPT Image 2.5 Flare" })).toHaveCount(0);
 });
 
 test("loads logo catalyst via /logo or /logos pathnames", async ({ page }) => {
@@ -450,11 +450,11 @@ test("logo catalyst gallery only shows logo runs, mockup catalyst gallery only s
       status: "succeeded",
       request: {
         taskId: "mockup",
-        modelId: "gpt-image-2",
+        modelId: "gpt-image-2.5-flare",
         inputs: { prompt: "Mockup 1", aspectRatio: "2:3" },
         attachments: []
       },
-      model: { id: "gpt-image-2", label: "GPT-Image-2", provider: "fal", endpoint: "openai/gpt-image-2" },
+      model: { id: "gpt-image-2.5-flare", label: "GPT Image 2.5 Flare", provider: "fal", endpoint: "openai/gpt-image-2.5/flare/text-to-image" },
       output: { images: [{ url: "data:image/svg+xml,<svg></svg>" }] },
       events: []
     },
@@ -490,9 +490,9 @@ test("logo catalyst gallery only shows logo runs, mockup catalyst gallery only s
 
   // 1. Visit /mockup (Mockup Catalyst)
   await page.goto("/mockup");
-  // Should display 1 run card (the mockup run) and it should be for GPT-Image-2
+  // Should display 1 run card (the mockup run) and it should be for GPT Image 2.5 Flare
   await expect(page.locator(".run-card")).toHaveCount(1);
-  await expect(page.locator(".run-card-title")).toHaveText("GPT-Image-2");
+  await expect(page.locator(".run-card-title")).toHaveText("GPT Image 2.5 Flare");
 
   // 2. Visit /logo (Logo Catalyst)
   await page.goto("/logo");
@@ -501,7 +501,7 @@ test("logo catalyst gallery only shows logo runs, mockup catalyst gallery only s
   await expect(page.locator(".run-card-title")).toHaveText("Grok Imagine Logo");
 });
 
-test("logo catalyst submits selected model and quality correctly for GPT-Image-2", async ({ page }) => {
+test("logo catalyst submits selected model and quality correctly for GPT Image 2.5 Flare", async ({ page }) => {
   await page.goto("/logo");
 
   await expect(page.getByText("✦ catalyst")).toBeVisible();
@@ -511,15 +511,15 @@ test("logo catalyst submits selected model and quality correctly for GPT-Image-2
   await expect(page.getByLabel("Generation model")).toHaveValue("grok-imagine");
   await expect(page.locator(".topbar-chip")).toHaveText("Grok Imagine");
 
-  // Select GPT-Image-2 in sidebar
-  await page.getByLabel("Generation model").selectOption("gpt-image-2");
-  await expect(page.getByLabel("Generation model")).toHaveValue("gpt-image-2");
-  await expect(page.locator(".topbar-chip")).toHaveText(/GPT-Image-2/);
+  // Select GPT Image 2.5 Flare in sidebar
+  await page.getByLabel("Generation model").selectOption("gpt-image-2.5-flare");
+  await expect(page.getByLabel("Generation model")).toHaveValue("gpt-image-2.5-flare");
+  await expect(page.locator(".topbar-chip")).toHaveText(/GPT Image 2.5 Flare/);
 
   // Click High quality
   await page.getByRole("complementary").getByRole("button", { name: "High", exact: true }).click();
   await expect(page.getByRole("complementary").getByRole("button", { name: "High", exact: true })).toHaveClass(/active/);
-  await expect(page.locator(".topbar-chip")).toHaveText("GPT-Image-2 · high");
+  await expect(page.locator(".topbar-chip")).toHaveText("GPT Image 2.5 Flare · high");
 
   await page.getByLabel("Prompt").fill("A glowing tech logo");
 
@@ -535,8 +535,31 @@ test("logo catalyst submits selected model and quality correctly for GPT-Image-2
   await expect(page.locator(".generate-button")).toBeEnabled({ timeout: 15000 });
 
   expect(requestPayload).not.toBeNull();
-  expect(requestPayload.modelId).toBe("gpt-image-2");
+  expect(requestPayload.modelId).toBe("gpt-image-2.5-flare");
   expect(requestPayload.inputs.quality).toBe("high");
+});
+
+test("Sunburst generation and edit retain the selected quality", async ({ page }) => {
+  await page.goto("/logo");
+  await page.getByLabel("Generation model").selectOption("gpt-image-2.5-sunburst");
+  await page.getByRole("complementary").getByRole("button", { name: "Max", exact: true }).click();
+  await page.getByLabel("Prompt").fill("A simple blue square logo");
+  const creation = page.waitForRequest((request) => request.url().endsWith("/api/runs") && request.method() === "POST");
+  await page.getByRole("button", { name: "Generate logos" }).click();
+  expect((await creation).postDataJSON()).toMatchObject({ modelId: "gpt-image-2.5-sunburst", inputs: { quality: "max" } });
+  await expect(page.locator(".generate-button")).toBeEnabled({ timeout: 15000 });
+  await page.locator(".run-card").first().getByRole("button", { name: "Output from GPT Image 2.5 Sunburst Actions" }).click();
+  await page.getByLabel("Edit model").selectOption("gpt-image-2.5-sunburst");
+  await page.locator(".edit-chat-panel").getByLabel("Quality").selectOption("xhigh");
+  await expect(page.locator(".edit-chat-panel").getByLabel("Quality")).toHaveValue("xhigh");
+  await page.getByLabel("Edit prompt").fill("Make the square red");
+  const editing = page.waitForRequest((request) => request.url().endsWith("/edit-image") && request.method() === "POST");
+  await page.getByRole("button", { name: "Send edit" }).click();
+  expect((await editing).postDataJSON()).toMatchObject({ modelId: "gpt-image-2.5-sunburst", quality: "xhigh" });
+  await expect(page.getByLabel("Edit model")).toBeEnabled({ timeout: 15000 });
+  await page.screenshot({ path: test.info().outputPath("sunburst-edit-controls.png"), animations: "disabled" });
+  await page.getByLabel("Edit model").selectOption("nano-banana-2");
+  await expect(page.locator(".edit-chat-panel").getByLabel("Quality")).toHaveCount(0);
 });
 
 test("logo catalyst submits selected model and resolution correctly for Grok Imagine Quality", async ({ page }) => {
@@ -618,9 +641,9 @@ test("logo catalyst keeps model controls usable while a generation is running", 
         request,
         model: {
           id: request.modelId,
-          label: "GPT-Image-2",
+          label: "GPT Image 2.5 Flare",
           provider: "fal",
-          endpoint: "openai/gpt-image-2",
+          endpoint: "openai/gpt-image-2.5/flare/text-to-image",
           synthId: { status: "possible", note: "", applyUpscaleByDefault: false },
           defaultPostprocessors: []
         },
@@ -640,7 +663,7 @@ test("logo catalyst keeps model controls usable while a generation is running", 
 
   await page.goto("/logo");
   await page.getByLabel("Prompt").fill("Long running logo generation");
-  await page.getByLabel("Generation model").selectOption("gpt-image-2");
+  await page.getByLabel("Generation model").selectOption("gpt-image-2.5-flare");
   await page.getByRole("complementary").getByRole("button", { name: "High", exact: true }).click();
   await page.getByRole("button", { name: "Generate logos" }).click();
 

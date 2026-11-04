@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { Attachment, BrandIdentityOutput, RunRecord } from "@ray-catalyst/core";
 import { createRun, fetchRuns } from "../lib/api";
 import { fileToAttachment } from "../lib/files";
+import { ImageDropzone } from "./ImageDropzone";
 
 type BrandCatalystPageProps = {
   onNavigate?: (path: string) => void;
@@ -89,11 +90,12 @@ export function BrandCatalystPage({ onNavigate }: BrandCatalystPageProps) {
     return () => window.clearInterval(interval);
   }, [hasRunningRun]);
 
-  async function handleFiles(files: FileList | null) {
-    if (!files?.length) return;
+  async function handleFiles(files: File[]) {
+    if (!files.length || busy) return;
     try {
-      setError("");
-      const next = await Promise.all(Array.from(files).slice(0, 4).map(fileToAttachment));
+      const images = files.filter((file) => file.type.startsWith("image/"));
+      setError(images.length !== files.length ? "Only image files can be attached." : "");
+      const next = await Promise.all(images.slice(0, 4).map(fileToAttachment));
       setAttachments((current) => [...current, ...next].slice(0, 4));
     } catch (err) {
       setError(displayError(err));
@@ -216,11 +218,10 @@ export function BrandCatalystPage({ onNavigate }: BrandCatalystPageProps) {
               disabled={busy}
             />
             <div className="brand-upload-row">
-              <label className="brand-upload">
-                <input type="file" accept="image/*" multiple onChange={(event) => handleFiles(event.target.files)} disabled={busy} />
+              <ImageDropzone className="brand-upload" label="Upload reference images" onFiles={handleFiles} disabled={busy}>
                 <span>Reference images</span>
                 <small>{attachments.length ? `${attachments.length} attached` : "Upload logos, moodboards, screenshots"}</small>
-              </label>
+              </ImageDropzone>
               <label className="brand-budget">
                 <span>Budget</span>
                 <input
@@ -242,10 +243,11 @@ export function BrandCatalystPage({ onNavigate }: BrandCatalystPageProps) {
                     className="brand-reference-thumb"
                     type="button"
                     title={`Remove ${attachment.name}`}
+                    aria-label={`Remove ${attachment.name}`}
                     onClick={() => setAttachments((current) => current.filter((_, itemIndex) => itemIndex !== index))}
                     disabled={busy}
                   >
-                    <img src={attachment.dataUrl} alt="" />
+                    <img src={attachment.dataUrl} alt={attachment.name} />
                   </button>
                 ))}
               </div>

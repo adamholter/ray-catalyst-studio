@@ -4,6 +4,7 @@ import { RunResults } from "./components/RunResults";
 import { MockupEditor } from "./components/MockupEditor";
 import { EditableMockupPage } from "./components/EditableMockupPage";
 import { BrandCatalystPage } from "./components/BrandCatalystPage";
+import { ImageDropzone } from "./components/ImageDropzone";
 import { createRun, fetchCapabilities, fetchRuns, type Capabilities } from "./lib/api";
 import { fileToAttachment } from "./lib/files";
 
@@ -292,10 +293,16 @@ export function App() {
     setInputs((current) => defaultInputsFor(model, current));
   }
 
-  async function handleFiles(files: FileList | null) {
-    if (!files?.length) return;
-    const next = await Promise.all(Array.from(files).map(fileToAttachment));
-    setAttachments((current) => [...current, ...next]);
+  async function handleFiles(files: File[]) {
+    if (!files.length || busy) return;
+    const images = files.filter((file) => file.type.startsWith("image/"));
+    setError(images.length !== files.length ? "Only image files can be attached." : "");
+    try {
+      const next = await Promise.all(images.map(fileToAttachment));
+      setAttachments((current) => [...current, ...next]);
+    } catch (err) {
+      setError(displayError(err));
+    }
   }
 
   async function submit() {
@@ -552,22 +559,32 @@ export function App() {
                 </div>
               ))}
 
+              {attachments.length ? (
+                <div className="reference-previews" aria-label="Uploaded references">
+                  {attachments.map((attachment, index) => (
+                    <figure className="reference-preview" key={`${attachment.name}-${index}`}>
+                      <img src={attachment.dataUrl} alt={attachment.name} />
+                      <figcaption title={attachment.name}>{attachment.name}</figcaption>
+                      <button type="button" aria-label={`Remove ${attachment.name}`} disabled={busy}
+                        onClick={() => setAttachments((current) => current.filter((_, itemIndex) => itemIndex !== index))}>×</button>
+                    </figure>
+                  ))}
+                </div>
+              ) : null}
               <div className="composer-rail">
                 <div className="rail-drops">
-                  <label className="drop-tile">
-                    <input className="drop-input" type="file" accept="image/*" onChange={(event) => handleFiles(event.target.files)} disabled={busy} />
+                  <ImageDropzone className="drop-tile" label="Upload logo" multiple={false} onFiles={handleFiles} disabled={busy}>
                     <span className="drop-body">
                       <span className="drop-icon">▧</span>
                       <span className="drop-text"><strong>Logo</strong><small>Drop or click</small></span>
                     </span>
-                  </label>
-                  <label className="drop-tile">
-                    <input className="drop-input" type="file" multiple accept="image/*" onChange={(event) => handleFiles(event.target.files)} disabled={busy} />
+                  </ImageDropzone>
+                  <ImageDropzone className="drop-tile" label="Upload references" onFiles={handleFiles} disabled={busy}>
                     <span className="drop-body">
                       <span className="drop-icon">▧</span>
                       <span className="drop-text"><strong>References</strong><small>{attachments.length ? `${attachments.length} attached` : "Drop inspiration"}</small></span>
                     </span>
-                  </label>
+                  </ImageDropzone>
 
                   {(taskId === "logo" || taskId === "mockup") && (
                     <div className="drop-tile color-palette-tile">

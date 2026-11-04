@@ -306,6 +306,14 @@ button { cursor: pointer; }
   padding: 10px 12px;
 }
 .drop-input { display: none; }
+.drop-tile[role="button"], .brand-upload[role="button"] { cursor: pointer; }
+.drop-tile.is-dragging, .brand-upload.is-dragging { border-color: var(--ink); background: var(--cream); outline: 2px solid var(--ink); outline-offset: 2px; }
+.drop-tile:focus-visible, .brand-upload:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.reference-previews { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+.reference-preview { position: relative; width: 88px; margin: 0; }
+.reference-preview img { display: block; width: 88px; height: 72px; object-fit: contain; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--paper); }
+.reference-preview figcaption { margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.7rem; color: var(--muted); }
+.reference-preview button { position: absolute; top: -6px; right: -6px; width: 22px; height: 22px; padding: 0; border: 1px solid var(--line); border-radius: 50%; background: var(--paper); color: var(--ink); cursor: pointer; }
 .drop-body { display: flex; gap: 8px; align-items: center; }
 .drop-icon { font-family: "JetBrains Mono", monospace; color: var(--muted); }
 .drop-text { display: flex; flex-direction: column; line-height: 1.1; }

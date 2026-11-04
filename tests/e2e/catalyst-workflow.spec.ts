@@ -1,6 +1,39 @@
 import { expect, test } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 
+for (const path of ["/mockup", "/logo", "/brand"]) {
+  test(`reference drops show thumbnails and support removal on ${path}`, async ({ page }) => {
+    await page.goto(path);
+    const zone = page.getByRole("button", { name: path === "/brand" ? "Upload reference images" : "Upload references", exact: true });
+    const png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aD1sAAAAASUVORK5CYII=";
+    const transfer = await page.evaluateHandle((base64) => {
+      const data = new DataTransfer();
+      const bytes = Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
+      data.items.add(new File([bytes], "reference-one.png", { type: "image/png" }));
+      data.items.add(new File([bytes], "reference-two.png", { type: "image/png" }));
+      data.items.add(new File(["text"], "not-an-image.txt", { type: "text/plain" }));
+      return data;
+    }, png);
+    await zone.dispatchEvent("dragenter", { dataTransfer: transfer });
+    await expect(zone).toHaveClass(/is-dragging/);
+    await zone.dispatchEvent("dragover", { dataTransfer: transfer });
+    await zone.dispatchEvent("drop", { dataTransfer: transfer });
+    await expect(zone).not.toHaveClass(/is-dragging/);
+    for (const name of ["reference-one.png", "reference-two.png"]) {
+      const thumbnail = page.getByRole("img", { name, exact: true });
+      await expect(thumbnail).toBeVisible();
+      await expect.poll(() => thumbnail.evaluate((image) => (image as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
+    }
+    await expect(page.getByText("Only image files can be attached.")).toBeVisible();
+    await page.getByRole("button", { name: "Remove reference-one.png", exact: true }).click();
+    await expect(page.getByRole("img", { name: "reference-one.png", exact: true })).toHaveCount(0);
+    // Choosing the same file again after removing it must trigger another upload.
+    await zone.locator('input[type="file"]').setInputFiles({ name: "reference-one.png", mimeType: "image/png", buffer: Buffer.from(png, "base64") });
+    await expect(page.getByRole("img", { name: "reference-one.png", exact: true })).toBeVisible();
+    await expect(zone.locator('input[type="file"]')).toHaveValue("");
+  });
+}
+
 test("health does not report disabled storage adapters as configured", async ({ request }) => {
   const response = await request.get("/api/health");
   expect(response.ok()).toBe(true);

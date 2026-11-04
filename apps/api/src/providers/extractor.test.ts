@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildAssetExtractionPrompt, buildMarkedAssetOverlaySvg } from "./extractor";
+import { buildAssetExtractionPrompt, buildMarkedAssetOverlaySvg, plannedAssets } from "./extractor";
 
 test("asset extraction prompts use full-mockup model reasoning instead of pixel crops", () => {
   const prompt = buildAssetExtractionPrompt(
@@ -63,4 +63,20 @@ test("marked asset overlays render a visible red bounding box", () => {
   assert.match(overlay, /x="44"/);
   assert.match(overlay, /width="220"/);
   assert.match(overlay, />Mascot cutout</);
+});
+
+test("planned assets keep only what the planner found and scale normalized crops", () => {
+  const asset = {
+    id: "hero",
+    name: "Hero",
+    type: "image" as const,
+    crop: { x: 0.5, y: 0.25, width: 0.5, height: 0.5 },
+    extractionPrompt: "Extract the hero.",
+    cleanup: { removeText: true, removeOverlays: true, notes: [] },
+    backgroundRemoval: { needed: false, reason: "" }
+  };
+  const assets = plannedAssets([asset, asset], 1000, 800);
+  assert.deepEqual(assets.map((item) => item.id), ["hero", "asset-2"]);
+  assert.deepEqual(assets[0].crop, { x: 500, y: 200, width: 500, height: 400 });
+  assert.deepEqual(plannedAssets([], 1000, 800), []);
 });

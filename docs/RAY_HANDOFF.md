@@ -108,6 +108,7 @@ Use the architecture instead of patching around it.
 - `apps/api/src/store/runStore.ts`: file/Postgres run storage adapter.
 - `apps/api/src/store/assetStorage.ts`: R2 asset persistence and retrieval.
 - `apps/api/src/providers/extractor.ts`: raster mockup to editable HTML/CSS pipeline.
+- `apps/api/src/providers/claudeCode.ts`: runs conversion planning, coding, and prompt-to-edit through the local Claude Code login.
 - `apps/api/src/providers/brandPipeline.ts`: Brand Catalyst pipeline.
 - `apps/web/src/App.tsx`: tool hub, task workbench, metadata-driven model controls.
 - `apps/web/src/components/RunResults.tsx`: gallery, result modal, prompt copy, vector x-ray, enhancement, vectorization, edits, delete.
@@ -150,7 +151,7 @@ Do not extract assets by mechanically cropping screenshot pixels.
 
 The correct workflow is:
 
-1. Analyze the full mockup with the OpenRouter planner model, default `~anthropic/claude-sonnet-latest`.
+1. Analyze the full mockup through the local Claude Code login (latest Sonnet, medium effort). See `apps/api/src/providers/claudeCode.ts`. It needs no key or `.env` setting and uses the Claude plan, not an API key. If Claude Code is missing, signed out, or out of usage, the conversion stops with a plain error instead of returning a generic page. Hosts without Claude Code use OpenRouter when `OPENROUTER_API_KEY` is set.
 2. Ask the planner for layout structure, asset bounding boxes, text, overlays, gradients, and extraction instructions.
 3. Render a red box/label overlay on the full mockup for each target asset.
 4. Send the full marked mockup to the image-editing model with exact instructions for the asset to regenerate.

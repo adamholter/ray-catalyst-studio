@@ -81,7 +81,7 @@ When Ray asks for a new feature such as slide presentations:
 - Do not add a provider by copying an old model call into React.
 - Do not use global aspect-ratio controls. Each generation model declares its own exact supported ratios and whether the backend sends `aspect_ratio` or `image_size`.
 - Do not extract editable mockup assets by cropping screenshot pixels. Send the full mockup to an image-editing model with asset position, exclusions, and clean-output instructions; use crop boxes only as location hints.
-- For image-to-website conversion, use the agent pipeline: Agents SDK + OpenRouter planner, red-box full-mockup overlays per asset, image-model extraction from the marked full mockup, and Pixelcut background removal only for transparent cutouts.
+- For image-to-website conversion, use the agent pipeline: local Claude Code planner and coder (`apps/api/src/providers/claudeCode.ts`; Agents SDK + OpenRouter only on hosts without Claude Code), red-box full-mockup overlays per asset, image-model extraction from the marked full mockup, and Pixelcut background removal only for transparent cutouts.
 - Do not use hidden static browser API keys.
 - Do not hand-roll OpenRouter fetch calls; use `apps/api/src/providers/openrouter.ts`.
 - Prefer `CATALYST_LLM_PROVIDER=fal-openrouter` for Ray's normal setup so `FAL_KEY` can power both image models and LLM planning.

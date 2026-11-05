@@ -5,6 +5,7 @@ import OpenAI from "openai";
 import sharp from "sharp";
 import { z } from "zod";
 import { config } from "../config";
+import { CLAUDE_NOT_INSTALLED, callClaudeCode, claudeCodeEnabled } from "./claudeCode";
 import { callFalDirect, callFalQueue, uploadFalFile } from "./fal";
 import { callOpenRouter, hasLlmCredentials } from "./openrouter";
 
@@ -571,6 +572,61 @@ function assetBriefForCoding(spec: LayoutSpec) {
   }));
 }
 
+function layoutTextForCoding(spec: LayoutSpec) {
+  return {
+    brand: spec.brand,
+    brandDescription: spec.brandDescription,
+    navItems: spec.navItems,
+    heroTitle: spec.heroTitle,
+    heroKicker: spec.heroKicker,
+    heroCta: spec.heroCta,
+    infoColumns: spec.infoColumns,
+    sectionTitle: spec.sectionTitle,
+    sectionAction: spec.sectionAction,
+    cards: spec.cards,
+    supportTitle: spec.supportTitle,
+    supportText: spec.supportText,
+    supportCta: spec.supportCta
+  };
+}
+
+// Keeps only what the planner found. The default five-asset template would pay to extract images that are not on the page.
+export function plannedAssets(assets: LayoutSpecAgentOutput["assets"], sourceWidth: number, sourceHeight: number): LayoutAsset[] {
+  const wholeImage = { x: 0, y: 0, width: sourceWidth, height: sourceHeight };
+  const seen = new Set<string>();
+  return assets.map((asset, index) => {
+    const id = !asset.id || seen.has(asset.id) ? `asset-${index + 1}` : asset.id;
+    seen.add(id);
+    return { ...asset, id, crop: normalizeCrop(asset.crop, wholeImage, sourceWidth, sourceHeight) };
+  });
+}
+
+async function analyzeLayoutWithClaudeCode(image: Buffer, prompt: string, sourceWidth: number, sourceHeight: number) {
+  const { data, model } = await callClaudeCode({
+    system: imageToWebsiteAgentInstructions(),
+    text: `Source dimensions: ${sourceWidth}x${sourceHeight}. Give crop coordinates as normalized 0-1 values. User prompt: ${prompt || "No prompt provided."}`,
+    schema: z.toJSONSchema(layoutSpecSchema, { io: "input" }),
+    image
+  });
+  const plan = layoutSpecSchema.parse(data);
+  return { spec: { ...plan, assets: plannedAssets(plan.assets, sourceWidth, sourceHeight) }, model };
+}
+
+async function codeEditableFrontendWithClaudeCode(image: Buffer, prompt: string, sourceWidth: number, sourceHeight: number, spec: LayoutSpec) {
+  const { data } = await callClaudeCode({
+    system: frontendCodeInstructions(sourceWidth, sourceHeight),
+    text: JSON.stringify({
+      sourceDimensions: { width: sourceWidth, height: sourceHeight },
+      userPrompt: prompt || "Uploaded raster website mockup",
+      layoutText: layoutTextForCoding(spec),
+      extractedAssets: assetBriefForCoding(spec)
+    }),
+    schema: z.toJSONSchema(frontendCodeSchema, { io: "input" }),
+    image
+  });
+  return sanitizeFrontendCode(frontendCodeSchema.parse(data));
+}
+
 async function codeEditableFrontendWithAgentSdk(
   sourceImageUrl: string,
   prompt: string,
@@ -606,21 +662,7 @@ async function codeEditableFrontendWithAgentSdk(
               text: JSON.stringify({
                 sourceDimensions: { width: sourceWidth, height: sourceHeight },
                 userPrompt: prompt || "Uploaded raster website mockup",
-                layoutText: {
-                  brand: spec.brand,
-                  brandDescription: spec.brandDescription,
-                  navItems: spec.navItems,
-                  heroTitle: spec.heroTitle,
-                  heroKicker: spec.heroKicker,
-                  heroCta: spec.heroCta,
-                  infoColumns: spec.infoColumns,
-                  sectionTitle: spec.sectionTitle,
-                  sectionAction: spec.sectionAction,
-                  cards: spec.cards,
-                  supportTitle: spec.supportTitle,
-                  supportText: spec.supportText,
-                  supportCta: spec.supportCta
-                },
+                layoutText: layoutTextForCoding(spec),
                 extractedAssets: assetBriefForCoding(spec)
               })
             },
@@ -1298,6 +1340,19 @@ export async function convertRunToMockup(run: RunRecord): Promise<EditableMockup
 
   const { width, height } = dimensionsForRun(run);
   const prompt = String(run.request.inputs.prompt || "");
+
+  // Local installs convert through the Claude Code login on this computer. A planning or coding
+  // failure stops the conversion with a visible error instead of returning the generic scaffold.
+  if (claudeCodeEnabled()) {
+    const source = await bufferFromImageUrl(sourceImageUrl);
+    const { spec: planned, model } = await analyzeLayoutWithClaudeCode(source, prompt, width, height);
+    const assets = await extractCleanAssets(sourceImageUrl, width, height, planned.assets);
+    const finalSpec = { ...planned, assets };
+    const code = await codeEditableFrontendWithClaudeCode(source, prompt, width, height, finalSpec);
+    return buildEditableMockup(sourceImageUrl, width, height, finalSpec, model, code);
+  }
+  if (config.providerMode === "live" && !config.openRouterKey) throw new Error(CLAUDE_NOT_INSTALLED);
+
   let spec: LayoutSpec | null = null;
   let layoutModel: string | undefined;
 
@@ -1326,6 +1381,24 @@ export async function convertRunToMockup(run: RunRecord): Promise<EditableMockup
 
 export async function editMockupLayout(mockup: EditableMockup, prompt: string): Promise<EditableMockup> {
   if (!prompt.trim()) return mockup;
+  const editInstructions =
+    "Modify the provided editable HTML/CSS according to the user request. Return strict JSON with html and css only. Preserve asset URLs, data-asset-id attributes, contenteditable attributes, and existing class names unless the edit requires changing them.";
+  if (claudeCodeEnabled()) {
+    const { data, model } = await callClaudeCode({
+      system: editInstructions,
+      text: JSON.stringify({ prompt, html: mockup.html, css: mockup.css }),
+      schema: z.toJSONSchema(z.object({ html: z.string(), css: z.string() }))
+    });
+    const edited = data as { html?: unknown; css?: unknown };
+    return {
+      ...mockup,
+      html: textValue(edited.html, mockup.html).replace(/<script[\s\S]*?<\/script>/gi, ""),
+      css: textValue(edited.css, mockup.css),
+      generatedAt: now(),
+      layoutModel: model
+    };
+  }
+  if (config.providerMode === "live" && !config.openRouterKey) throw new Error(CLAUDE_NOT_INSTALLED);
   if (!hasLlmCredentials()) {
     throw new Error(
       config.llmProvider === "fal-openrouter"
@@ -1338,8 +1411,7 @@ export async function editMockupLayout(mockup: EditableMockup, prompt: string): 
     [
       {
         role: "system",
-        content:
-          "Modify the provided editable HTML/CSS according to the user request. Return strict JSON with html and css only. Preserve asset URLs, data-asset-id attributes, contenteditable attributes, and existing class names unless the edit requires changing them."
+        content: editInstructions
       },
       {
         role: "user",

@@ -51,7 +51,7 @@ The converter should use the uploaded screenshot as source of truth. Extracted i
 
 The image-to-website path is an agent loop. The OpenRouter planner uses the Agents SDK with `CATALYST_IMAGE_TO_WEBSITE_AGENT_MODEL` (default `~anthropic/claude-sonnet-latest`) to identify layout structure, asset boxes, extraction prompts, and whether Pixelcut background removal is needed. For each asset, the backend renders a red box on the full mockup, sends that marked full mockup to the image model, and only then optionally runs Pixelcut for transparent cutouts.
 
-When OpenRouter analysis is unavailable, the fallback is only a generic editable landing-page scaffold. Do not present the fallback as a high-fidelity arbitrary-layout converter.
+Live conversion uses the local Claude Code login and needs no extra setup. In live mode with neither Claude Code nor `OPENROUTER_API_KEY`, conversion stops with an error. If OpenRouter analysis fails on a host without Claude Code, the fallback is only a generic editable landing-page scaffold. Do not present the fallback as a high-fidelity arbitrary-layout converter.
 
 ## Enhancement And Watermark Notes
 

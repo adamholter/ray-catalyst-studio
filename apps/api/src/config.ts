@@ -63,6 +63,8 @@ export const config = {
   openRouterModel: process.env.CATALYST_OPENROUTER_MODEL || "google/gemini-3.5-flash",
   imageToWebsiteAgentModel: process.env.CATALYST_IMAGE_TO_WEBSITE_AGENT_MODEL || "~anthropic/claude-sonnet-latest",
   openRouterReasoning: process.env.CATALYST_OPENROUTER_REASONING || "low",
+  // Optional per-call ceiling for cheap live tests. Normal use leaves this unset.
+  claudeMaxBudgetUsd: process.env.CATALYST_CLAUDE_MAX_BUDGET_USD || "",
   dataDir: process.env.CATALYST_DATA_DIR || (selectedProviderMode === "live" ? ".data/live" : ".data/mock")
 };
 

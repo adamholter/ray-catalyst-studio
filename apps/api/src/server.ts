@@ -15,6 +15,7 @@ import {
 import { config } from "./config";
 import { enqueueRun, executeImageEdit, executeUpscale, executeVectorize } from "./runner";
 import { deleteRun, getRun, listRuns, saveRun } from "./store/runStore";
+import { claudeCodeEnabled, claudeCodeSignedIn } from "./providers/claudeCode";
 import { convertRunToMockup, editMockupLayout } from "./providers/extractor";
 import { getStoredAsset } from "./store/assetStorage";
 
@@ -23,13 +24,14 @@ export function createApp() {
   app.use(cors());
   app.use(express.json({ limit: "25mb" }));
 
-  app.get("/api/health", (_req, res) => {
+  app.get("/api/health", async (_req, res) => {
     res.json({
       ok: true,
       providerMode: config.providerMode,
       storeDriver: config.storeDriver,
       assetStorageDriver: config.assetStorageDriver,
       llmProvider: config.llmProvider,
+      claudeCode: { installed: claudeCodeEnabled(), signedIn: await claudeCodeSignedIn() },
       liveProvidersConfigured: {
         fal: Boolean(config.falKey),
         openRouter: Boolean(config.openRouterKey) || (config.llmProvider === "fal-openrouter" && Boolean(config.falKey)),

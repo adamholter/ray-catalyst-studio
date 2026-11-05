@@ -91,7 +91,7 @@ Raster-to-editable conversion should not treat image assets as mechanical screen
 
 The conversion pipeline is an agent-style loop:
 
-1. The OpenRouter image-to-website planner runs through the Agents SDK using `CATALYST_IMAGE_TO_WEBSITE_AGENT_MODEL`, defaulting to `~anthropic/claude-sonnet-latest`.
+1. The image-to-website planner runs through the local Claude Code login (`claude -p`, `sonnet` alias, medium effort, no tools) when Claude Code is installed. Failures stop the conversion with a visible error. Without Claude Code, it uses the Agents SDK and OpenRouter when `OPENROUTER_API_KEY` is set.
 2. The planner returns editable layout copy plus per-asset bounding boxes, extraction instructions, cleanup rules, and whether Pixelcut background removal is needed.
 3. The backend renders a red bounding box/label overlay on top of the full source mockup for each asset.
 4. The image-editing model receives the full marked mockup and an extraction prompt. The box is only a locator; the model must regenerate the clean asset, not crop pixels.

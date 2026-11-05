@@ -12,10 +12,18 @@ Ray is non-technical. Do not ask him to run commands. If you change the app, you
 5. Waiting for Ray/Adam to confirm everything works before pushing or syncing.
 6. Once confirmed, publishing the change through a feature branch and pull request. Do not leave approved work only on the local computer.
 
+## After Pulling Updates
+
+Do this yourself every time you pull. Ray should never need to do any of it.
+
+1. Run `npm install`, then restart the local server.
+2. Check `http://127.0.0.1:5191/api/health`. `claudeCode.installed` and `claudeCode.signedIn` should both be `true`.
+3. If not signed in, tell Ray in one plain sentence to sign in to Claude Code. No `.env` change is needed for Claude Code.
+
 Keep model details centralized in `packages/core/src/registry.ts`.
 Keep generated runs/assets out of Git. Hosted state belongs in Postgres and Cloudflare R2; local state belongs in `.data`.
 Use feature branches and do not push directly to `main`.
 GitHub is the shared source of truth. Follow `docs/COLLABORATION.md` so updates made by Adam or Ray become available to the other person. Never use an automatic background pull that could overwrite uncommitted work.
 
 Do not set `max_tokens` or `max_completion_tokens` on OpenRouter calls. Use the shared backend OpenRouter helper and let long JSON/HTML/CSS responses complete.
-Ray's normal live setup should only need `FAL_KEY`; LLM planning can use fal's OpenRouter-compatible endpoint with `CATALYST_LLM_PROVIDER=fal-openrouter`.
+Ray's normal live setup should only need `FAL_KEY`; LLM planning can use fal's OpenRouter-compatible endpoint with `CATALYST_LLM_PROVIDER=fal-openrouter`. Editable Conversion is the exception: its planning, coding, and prompt-to-edit use the local Claude Code login (latest Sonnet, medium effort) with no extra setup.
